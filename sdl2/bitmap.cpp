@@ -161,7 +161,68 @@ namespace apk {
     }
 
     void BitmapImpl::commitToCache() {
+        switch(m_pf) {
+            case PixelFormat::None:
+                return;
+            case PixelFormat::Planar1:
+            case PixelFormat::Planar2:
+            case PixelFormat::Planar3:
+            case PixelFormat::Planar4:
+            case PixelFormat::Planar5:
+            case PixelFormat::Planar6:
+            case PixelFormat::Planar7:
+            case PixelFormat::Planar8:
+            {
+                uint8* dst = m_cache_image;
+                int32 bitPosition = 7;
 
+                for (int y = 0; y < m_height; y++) {
+                    for (int x = 0; x < m_width; x++) {
+                        uint8_t pixel = 0;
+                        uint32 byteIndex = (y * m_stride) + (x >> 3);
+
+                        for (int p = 0; p < m_depth; p++) {
+                            if (m_planes[p][byteIndex] & (1 << bitPosition)) {
+                                pixel |= (1 << p);
+                            }
+                        }
+
+                        *dst++ = pixel;
+                        bitPosition = (bitPosition - 1) & 7;
+                    }
+                    if(m_width & 7) {
+                        bitPosition = 7;
+                    }
+                }
+            }
+            break;
+            case PixelFormat::Chunky8:
+            case PixelFormat::RGB555:
+            case PixelFormat::BGR555:
+            case PixelFormat::RGB24:
+            case PixelFormat::BGR24:
+            case PixelFormat::RGBA32:
+            case PixelFormat::ARGB32:
+            case PixelFormat::BGRA32:
+            case PixelFormat::ABGR32:
+            {  
+                if (m_planes[0] == m_cache_image)
+                    return;
+                if (m_cache_stride == m_stride) {
+                    memcpy(m_cache_image, m_planes[0], m_stride * m_height);
+                }
+                else {
+                    uint8* dst = m_cache_image;
+                    uint8* src = m_planes[0];
+                    for(uint32 y=0;y < m_height;y++) {
+                        memcpy(dst, src, m_width);
+                        dst += m_cache_stride;
+                        src += m_stride;
+                    }
+                }
+            }
+            break;
+        }
     }
 
     Bitmap::Bitmap() 
