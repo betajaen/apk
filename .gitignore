@@ -1,0 +1,12 @@
+.DS_Store
+.idea
+.vs
+.vscode
+
+*.o
+*.out
+*.dSYM
+*.rom
+*.hdf
+*.uaem
+*.info
