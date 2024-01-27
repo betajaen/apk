@@ -13,17 +13,19 @@ namespace apk {
     class Bitmap {
         BitmapImpl* m_impl;
         PixelFormat m_pixFmt;
-        uint32 m_width, m_height, m_dataSize;
+        uint32 m_width, m_height;
         
         public:
 
         Bitmap();
-        Bitmap(uint32 width, uint32 height, const PixelFormat& pf);
+        Bitmap(uint32 width, uint32 height, const PixelFormat& pf, bool displayable = true, bool clear = true);
         ~Bitmap();
 
-        void* beginAccess();
+        void create(uint32 width, uint32 height, const PixelFormat& pf, bool displayable = true, bool clear = true);
+        void destroy();
 
-        void endAccess();
+        void* beginAccess(uint8 plane = 0);
+        void endAccess(bool changed);
 
         const PixelFormat& getPixelFormat() const {
             return m_pixFmt;
@@ -37,9 +39,7 @@ namespace apk {
             return m_height;
         }
 
-        uint32_t getBytesPerLine() const {
-            return m_pixFmt.bytesPerLine(m_width);
-        }
+        uint32_t getBytesPerLine() const;
 
 
     };

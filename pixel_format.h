@@ -6,69 +6,45 @@
 #include <apk/pod.h>
 
 namespace apk {
-    
-    struct PixelFormat {
 
-        enum class Storage : uint8 {
-            None,
-            Planar,
-            Interleaved,
-            Chunky
-        };
+    #define APK_PF_PLANAR_BIT        (1<<5)
+    #define APK_PF_CHUNKY_BIT        (1<<6)
+    #define APK_PF_RGB_BIT           (1<<7)
+    #define APK_PF_BGR_BIT           (1<<8)
+    #define APK_PF_RGBA_BIT          (1<<9)
+    #define APK_PF_BGRA_BIT          (1<<10)
+    #define APK_PF_ARGB_BIT          (1<<11)
+    #define APK_PF_ABGR_BIT          (1<<12)
 
-        enum class Colour : uint8 {
-            None,
-            LUT,
-            RGB24,
-            RGB32
-        };
+    enum class PixelFormat : uint32 {
+        None              = 0,
 
-        enum Flags {
-            Flag_EHB
-        };
+        Planar1           = APK_PF_PLANAR_BIT + 1,
+        Planar2           = APK_PF_PLANAR_BIT + 2,
+        Planar3           = APK_PF_PLANAR_BIT + 3,
+        Planar4           = APK_PF_PLANAR_BIT + 4,
+        Planar5           = APK_PF_PLANAR_BIT + 5,
+        Planar6           = APK_PF_PLANAR_BIT + 6,
+        Planar7           = APK_PF_PLANAR_BIT + 7,
+        Planar8           = APK_PF_PLANAR_BIT + 8,
 
-        Storage  m_storage;
-        Colour   m_colour;
-        uint8    m_numPlanes;
-        uint8    m_flags;
+        Chunky8           = APK_PF_CHUNKY_BIT + 8,
 
-        constexpr PixelFormat()
-            : m_storage(Storage::None), m_colour(Colour::None), m_numPlanes(0), m_flags(0)
-        {
-        }
+        RGB555            = APK_PF_RGB_BIT + 555,
+        BGR555            = APK_PF_BGR_BIT + 555,
 
-        constexpr PixelFormat(Storage s, Colour c, uint8 p = 0, uint8 f = 0) 
-            : m_storage(s), m_colour(c), m_numPlanes(p), m_flags(f)
-        {
-        }
-
-        constexpr bool isNone() const {
-            return m_storage == Storage::None && m_colour == Colour::None && m_numPlanes == 0 && m_flags == 0;
-        }
-
-        constexpr bool equals(const PixelFormat& other) const {
-            return  m_storage == other.m_storage &&
-                    m_colour  == other.m_colour &&
-                    m_numPlanes == other.m_numPlanes &&
-                    m_flags == other.m_flags;
-        }
-
-        uint32_t bytesPerLine(uint32 width) const;
+        RGB565            = APK_PF_RGB_BIT + 565,
+        BGR565            = APK_PF_BGR_BIT + 565,
+        
+        RGB24             = APK_PF_RGB_BIT + 24, 
+        BGR24             = APK_PF_BGR_BIT + 24,     
+        
+        RGBA32            = APK_PF_RGBA_BIT + 32, 
+        ARGB32            = APK_PF_ARGB_BIT + 32, 
+        BGRA32            = APK_PF_BGRA_BIT + 32,  
+        ABGR32            = APK_PF_ABGR_BIT + 32,   
     };
-
-    static_assert(sizeof(PixelFormat) == 4);
-
-    namespace pixelformats {
-        constexpr PixelFormat Chunky8 = PixelFormat(PixelFormat::Storage::Chunky, PixelFormat::Colour::LUT);
-        constexpr PixelFormat Planar1 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 1); 
-        constexpr PixelFormat Planar2 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 2); 
-        constexpr PixelFormat Planar3 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 3); 
-        constexpr PixelFormat Planar4 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 4); 
-        constexpr PixelFormat Planar5 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 5); 
-        constexpr PixelFormat Planar6 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 6); 
-        constexpr PixelFormat Planar7 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 7); 
-        constexpr PixelFormat Planar8 = PixelFormat(PixelFormat::Storage::Planar, PixelFormat::Colour::LUT, 8); 
-
-    }
+    
+    const char* GetPixelFormatString(PixelFormat pf);
 
 }
