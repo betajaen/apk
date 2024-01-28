@@ -347,13 +347,16 @@ namespace apk {
 
         SDL_ShowCursor(SDL_ENABLE);
 
-        SDL_assert(s_virtualSurface);
-        apk_deallocate(s_virtualSurface);
-        s_virtualSurface = NULL;
+        if (s_virtualSurface) {
+            apk_deallocate(s_virtualSurface);
+            s_virtualSurface = NULL;
+        }
 
-        SDL_assert(s_screen);
-        SDL_DestroyWindow(s_screen);
-        s_screen = NULL;
+        if (s_virtualSurface) {
+            SDL_DestroyWindow(s_screen);
+            s_screen = NULL;
+        }
+
         s_VirtualWidth = 0;
         s_VirtualHeight = 0;
     }
