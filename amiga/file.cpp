@@ -92,18 +92,18 @@ namespace apk {
     }
 
 
-    bool ReadFile::seek(int32 where, int32 mode) {
+    int32 ReadFile::seek(int32 where, SeekMode mode) {
         assert(m_impl);
 
         switch(mode) {
             default:
-                return false;
-            case kSEEK_SET:
-                return Seek(m_impl->fh, where, OFFSET_BEGINNING) != 0;
-            case kSEEK_CUR:
-                return Seek(m_impl->fh, where, OFFSET_CURRENT) != 0;
-            case kSEEK_END:
-                return Seek(m_impl->fh, where, OFFSET_END) != 0;
+                return -1;
+            case SeekMode::Set:
+                return Seek(m_impl->fh, where, OFFSET_BEGINNING);
+            case SeekMode::Cur:
+                return Seek(m_impl->fh, where, OFFSET_CURRENT);
+            case SeekMode::End:
+                return Seek(m_impl->fh, where, OFFSET_END);
         }
     }
 

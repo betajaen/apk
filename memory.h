@@ -5,6 +5,7 @@
 
 #include "pod.h"
 #include "compat.h"
+#include "consts.h"
 
 namespace apk {
 
@@ -51,18 +52,22 @@ namespace apk {
             m_pos = pos;
         }
 
-        void seek(int32 offset, int from) {
+        int32 seek(int32 offset, SeekMode from) {
             assert(m_pos <= m_size);
             switch(from) {
-                case kSEEK_CUR:
+                case SeekMode::Cur:
                     m_pos += offset;
                 break;
-                case kSEEK_SET:
+                case SeekMode::Set:
                     m_pos = offset;
                 break;
-                case kSEEK_END:
+                case SeekMode::End:
                     m_pos = m_size + offset;
                 break;
+                case SeekMode::GetPos:
+                    return m_pos;
+                case SeekMode::GetSize:
+                    return m_size;
             }
             assert(m_pos <= m_size);
         }

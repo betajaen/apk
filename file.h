@@ -27,7 +27,7 @@ namespace apk {
 
         uint32 size() const;
 
-        bool seek(int32 where, int32 mode = kSEEK_SET);
+        int32 seek(int32 where, SeekMode mode = SeekMode::Set);
 
         uint32 read(void* data, uint32 size);
 

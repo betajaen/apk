@@ -2,10 +2,14 @@
 // Licensed under the MIT License; see LICENSE file.
 #pragma once
 
-#include "apk.h"
-
 namespace apk {
-    constexpr int32 kSEEK_SET = 0;
-    constexpr int32 kSEEK_CUR = 1;
-    constexpr int32 kSEEK_END = 2;
+
+    enum class SeekMode {
+        Set,
+        Cur,
+        End,
+        GetPos,
+        GetSize
+    };
+
 }
