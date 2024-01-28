@@ -52,9 +52,10 @@ namespace apk {
             m_pos = pos;
         }
 
-        int32 seek(int32 offset, SeekMode from) {
-            assert(m_pos <= m_size);
-            switch(from) {
+        int32 seek(int32 offset, SeekMode mode) {
+            switch(mode) {
+                default:
+                    return -1;
                 case SeekMode::Cur:
                     m_pos += offset;
                 break;
@@ -64,12 +65,8 @@ namespace apk {
                 case SeekMode::End:
                     m_pos = m_size + offset;
                 break;
-                case SeekMode::GetPos:
-                    return m_pos;
-                case SeekMode::GetSize:
-                    return m_size;
             }
-            assert(m_pos <= m_size);
+            return -1;
         }
 
         uint32 pos() {
