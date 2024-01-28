@@ -56,25 +56,93 @@ namespace apk {
         uint16 ReadStream::readUint16() {
             uint16 val;
             read(&val, sizeof(uint16));
-            return endian::endian_swap_rt<uint16>(val, m_endian);
+            return endian::read_from(val, m_endian);
         }
 
         int16 ReadStream::readInt16() {
             int16 val;
             read(&val, sizeof(int16));
-            return endian::endian_swap_rt<int16>(val, m_endian);
+            return endian::read_from(val, m_endian);
         }
         
         uint32 ReadStream::readUint32() {
             uint32 val;
             read(&val, sizeof(uint32));
-            return endian::endian_swap_rt<uint32>(val, m_endian);
+            return endian::read_from(val, m_endian);
         }
 
         int32 ReadStream::readInt32() {
             int32 val;
             read(&val, sizeof(int32));
-            return endian::endian_swap_rt<int32>(val, m_endian);
+            return endian::read_from(val, m_endian);
+        }
+
+
+
+        WriteStream::WriteStream(const WriteStreamFunction writeFn, const SeekStreamFunction seekFn, const void* udata, const int32 endian)
+            : m_udata(udata), m_write_function(writeFn), m_seek_function(seekFn), m_endian(endian)
+        {
+        }
+
+        bool WriteStream::canSeek() const {
+            return m_seek_function != nullptr;
+        }
+
+        APK_SSIZE_TYPE WriteStream::pos() {
+            if (m_seek_function == nullptr) {
+                return -1;
+            }
+            else {
+                return m_seek_function(m_udata, 0, SeekMode::GetPos);
+            }
+        }
+
+        APK_SSIZE_TYPE WriteStream::size() {
+            if (m_seek_function == nullptr) {
+                return -1;
+            }
+            else {
+                return m_seek_function(m_udata, 0, SeekMode::GetSize);
+            }
+        }
+
+        APK_SSIZE_TYPE WriteStream::seek(APK_SSIZE_TYPE size, SeekMode mode) {
+            assert(m_seek_function);
+            return m_seek_function(m_udata, size, mode);
+        }
+
+        APK_SSIZE_TYPE WriteStream::write(const void* dst, APK_SIZE_TYPE size) {
+            assert(m_write_function);
+            return m_write_function(m_udata, dst, size);
+        }
+
+        bool WriteStream::skip(APK_SIZE_TYPE offset) {
+            return seek(offset, SeekMode::Cur) != 0;
+        }
+
+        void WriteStream::writeByte(byte b) {
+            byte value;
+            write(&value, sizeof(byte));
+        }
+
+        void WriteStream::writeUint16(uint16 val) {
+            val = endian::write_to(val, m_endian);
+            write(&val, sizeof(val));
+        }
+
+        void WriteStream::writeInt16(int16 val) {
+            val = endian::write_to(val, m_endian);
+            write(&val, sizeof(val));
+        }
+        
+        void WriteStream::writeUint32(uint32 val) {
+            val = endian::write_to(val, m_endian);
+            write(&val, sizeof(val));
+        }
+
+        void WriteStream::writeInt32(int32 val) {
+            val = endian::write_to(val, m_endian);
+            write(&val, sizeof(val));
         }
 
 }

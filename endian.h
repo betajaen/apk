@@ -77,8 +77,8 @@ namespace apk::endian {
     }
 
     template<typename T, int ETo = Native>
-    inline static T endian_swap_rt(const T& v, int endian) {
-        switch(endian) {
+    inline static T read_from(const T& v, int from_endian) {
+        switch(from_endian) {
             default:
             case NoChange:
                 return v;
@@ -86,6 +86,20 @@ namespace apk::endian {
                 return endian_swap<T, Little, ETo>(v);
             case Big:
                 return endian_swap<T, Big, ETo>(v);
+        }
+    }
+
+
+    template<typename T, int EFrom = Native>
+    inline static T write_to(const T& v, int to_endian) {
+        switch(to_endian) {
+            default:
+            case NoChange:
+                return v;
+            case Little:
+                return endian_swap<T, EFrom, Little>(v);
+            case Big:
+                return endian_swap<T, EFrom, Big>(v);
         }
     }
 
