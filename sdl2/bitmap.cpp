@@ -199,6 +199,8 @@ namespace apk {
             case PixelFormat::Chunky8:
             case PixelFormat::RGB555:
             case PixelFormat::BGR555:
+            case PixelFormat::RGB565:
+            case PixelFormat::BGR565:
             case PixelFormat::RGB24:
             case PixelFormat::BGR24:
             case PixelFormat::RGBA32:

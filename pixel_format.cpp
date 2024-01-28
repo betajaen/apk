@@ -1,8 +1,6 @@
 // APK - Copyright (c) 2024 by Robin Southern. https://github.com/betajaen/apk
 // Licensed under the MIT License; see LICENSE file.
 
-#pragma once
-
 #include <apk/pixel_format.h>
 
 namespace apk {

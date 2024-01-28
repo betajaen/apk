@@ -40,15 +40,15 @@ namespace apk {
         header->size = totalSize;
         header->footer = (Footer*) (bytes + sizeof(Header) + size);
         header->footer->header = header;
-        ::printf("[MEM] Allocate %s (%ld)\n", comment, totalSize);
+        ::printf("[MEM] Allocate %s (%u)\n", comment, size);
         return (void*) (bytes + sizeof(Header));
     }
 
     static void _freeMem(void* mem, const char* comment) {
-        ::printf("[MEM] Free from %s (%p)\n", comment);
+        ::printf("[MEM] Free from %s (%p)\n", comment, mem);
         assert(mem);
         Header* header = (((Header*) mem) - 1);
-        ::printf("[MEM] Free %s (%ld)\n", header->comment, header->size);
+        ::printf("[MEM] Free %s (%u)\n", header->comment, header->size);
         assert(header->magic == kMagic);
         assert(header->footer->header == header);
         byte* b = (byte*) header;

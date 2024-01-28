@@ -29,3 +29,17 @@ void* APK_ATTR_WEAK operator new(APK_SIZE_TYPE size, const char* comment);
 #define apk_delete(MEM) ::apk::_apk_delete(MEM, __FILE__ ":" apk_to_str(__LINE__))
 #define apk_allocate(SIZE) ::apk::_apk_allocate(SIZE, __FILE__ ":" apk_to_str(__LINE__))
 #define apk_deallocate(MEM) ::apk::_apk_deallocate(MEM, __FILE__ ":" apk_to_str(__LINE__))
+
+#define apk_no_copy(T) \
+    T(const T&) = delete; \
+    T& operator=(const T&) = delete;
+
+#define apk_no_move(T) \
+    T(T&&) = delete; \
+    T& operator=(T&&) = delete;
+
+#define apk_no_copy_move(T) \
+    T(const T&) = delete; \
+    T& operator=(const T&) = delete; \
+    T(T&&) = delete; \
+    T& operator=(T&&) = delete;
