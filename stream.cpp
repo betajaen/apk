@@ -78,6 +78,54 @@ namespace apk {
         }
 
 
+        uint16 ReadStream::readUint16BE() {
+            uint16 val;
+            read(&val, sizeof(uint16));
+            return endian::endian_swap<uint16, endian::Big, endian::Native>(val);
+        }
+
+        int16 ReadStream::readInt16BE() {
+            int16 val;
+            read(&val, sizeof(int16));
+            return endian::endian_swap<int16, endian::Big, endian::Native>(val);
+        }
+        
+        uint32 ReadStream::readUint32BE() {
+            uint32 val;
+            read(&val, sizeof(uint32));
+            return endian::endian_swap<uint32, endian::Big, endian::Native>(val);
+        }
+
+        int32 ReadStream::readInt32BE() {
+            int32 val;
+            read(&val, sizeof(int32));
+            return endian::endian_swap<int32, endian::Big, endian::Native>(val);
+        }
+
+
+        uint16 ReadStream::readUint16LE() {
+            uint16 val;
+            read(&val, sizeof(uint16));
+            return endian::endian_swap<uint16, endian::Little, endian::Native>(val);
+        }
+
+        int16 ReadStream::readInt16LE() {
+            int16 val;
+            read(&val, sizeof(int16));
+            return endian::endian_swap<int16, endian::Little, endian::Native>(val);
+        }
+        
+        uint32 ReadStream::readUint32LE() {
+            uint32 val;
+            read(&val, sizeof(uint32));
+            return endian::endian_swap<uint32, endian::Little, endian::Native>(val);
+        }
+
+        int32 ReadStream::readInt32LE() {
+            int32 val;
+            read(&val, sizeof(int32));
+            return endian::endian_swap<int32, endian::Little, endian::Native>(val);
+        }
 
         WriteStream::WriteStream(const WriteStreamFunction writeFn, const SeekStreamFunction seekFn, const void* udata, const int32 endian)
             : m_udata(udata), m_write_function(writeFn), m_seek_function(seekFn), m_endian(endian)
@@ -144,5 +192,7 @@ namespace apk {
             val = endian::write_to(val, m_endian);
             write(&val, sizeof(val));
         }
+
+        
 
 }

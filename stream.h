@@ -39,10 +39,38 @@ namespace apk {
         uint16 readUint16();
 
         int16 readInt16();
+
+        inline int16 readSint16() { return readInt16(); }
         
         uint32 readUint32();
 
         int32 readInt32();
+
+        inline int32 readSint32() { return readInt32(); }
+
+        uint16 readUint16BE();
+
+        int16 readInt16BE();
+
+        inline int16 readSint16BE() { return readInt16BE(); }
+        
+        uint32 readUint32BE();
+
+        int32 readInt32BE();
+
+        inline int32 readSint32BE() { return readInt32BE(); }
+        
+        uint16 readUint16LE();
+
+        int16 readInt16LE();
+
+        inline int16 readSint16LE() { return readInt16LE(); }
+        
+        uint32 readUint32LE();
+
+        int32 readInt32LE();
+
+        inline int32 readSint32LE() { return readInt32LE(); }
 
     };
 
