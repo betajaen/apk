@@ -86,7 +86,7 @@ namespace apk { namespace gfx {
 
         void paletteFadeIn(uint32 steps) {
             if (sPaletteFading == 0) {
-                sPaletteFadeSteps = (int32) CLIP((int32)steps, (int32)1, (int32)255);
+                sPaletteFadeSteps = (int32) clip((int32)steps, (int32)1, (int32)255);
                 sPaletteFadeTime = -255;
                 sPaletteFadeDest = 0;
                 sPaletteFading = 1;
@@ -95,7 +95,7 @@ namespace apk { namespace gfx {
 
         void paletteFadeOut(uint32 steps) {
             if (sPaletteFading == 0) {
-                sPaletteFadeSteps = -(int32) CLIP((int32)steps, (int32)1, (int32)255);
+                sPaletteFadeSteps = -(int32) clip((int32)steps, (int32)1, (int32)255);
                 sPaletteFadeTime = 255;
                 sPaletteFadeDest = 0;
                 sPaletteFading = -1;

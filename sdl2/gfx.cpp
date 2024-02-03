@@ -35,10 +35,10 @@ namespace apk {
     uint32 s_SpriteHeight = 0;
 
     static void blitVirtual(uint8* sprite, int32 spriteX, int32 spriteY, uint32 spriteWidth, uint32 spriteHeight, uint8 transparent) {
-        int32 x0 = MAX(0, spriteX);
-        int32 y0 = MAX(0, spriteY);
-        int32 x1 = MIN(x0 + spriteWidth, s_VirtualWidth);
-        int32 y1 = MIN(y0 + spriteHeight, s_VirtualHeight);
+        int32 x0 = max(0, spriteX);
+        int32 y0 = max(0, spriteY);
+        int32 x1 = min(x0 + spriteWidth, s_VirtualWidth);
+        int32 y1 = min(y0 + spriteHeight, s_VirtualHeight);
 
 		uint32 srcX0 = 0, srcY0 = 0;
         for(int32 j=y0;j < y1;j++) {
@@ -459,7 +459,7 @@ namespace apk {
 
     void paletteFadeIn(uint32 steps) {
         if (sPaletteFading == 0) {
-            sPaletteFadeSteps = (int32) CLIP((int32)steps, (int32)1, (int32)255);
+            sPaletteFadeSteps = (int32) clip((int32)steps, (int32)1, (int32)255);
             sPaletteFadeTime = -255;
             sPaletteFadeDest = 0;
             sPaletteFading = 1;
@@ -468,7 +468,7 @@ namespace apk {
 
     void paletteFadeOut(uint32 steps) {
         if (sPaletteFading == 0) {
-            sPaletteFadeSteps = -(int32) CLIP((int32)steps, (int32)1, (int32)255);
+            sPaletteFadeSteps = -(int32) clip((int32)steps, (int32)1, (int32)255);
             sPaletteFadeTime = 255;
             sPaletteFadeDest = 0;
             sPaletteFading = -1;
@@ -705,8 +705,8 @@ namespace apk {
     }
 
     void setCursorChunky(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY) {
-        s_SpriteWidth = MIN(16, width);
-        s_SpriteHeight = MIN(16, height);
+        s_SpriteWidth = min(16, width);
+        s_SpriteHeight = min(16, height);
         s_SpriteOffsetX = offsetX;
         s_SpriteOffsetY = offsetY;
         uint32 copySize = width * height;
