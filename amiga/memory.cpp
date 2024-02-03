@@ -11,12 +11,12 @@ static const ULONG LenChar = 0x52934e75;
 
 namespace apk {
 
-    void* _apk_allocate(APK_SIZE_TYPE size, const char* comment) {
+    void* heap_allocate(APK_SIZE_TYPE size, const char* comment) {
         size += size & 3; // align up.
         return AllocVec(size, MEMF_CLEAR);
     }
 
-    void _apk_deallocate(void* mem, const char* comment) {
+    void heap_deallocate(void* mem, const char* comment) {
         if (mem != NULL) {
             FreeVec(mem);
         }

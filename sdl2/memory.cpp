@@ -69,11 +69,11 @@ namespace apk {
     }
 #endif
 
-    void* _apk_allocate(APK_SIZE_TYPE size, const char* comment) {
+    void* heap_allocate(APK_SIZE_TYPE size, const char* comment) {
         return _allocMem(size, comment);
     }
 
-    void _apk_deallocate(void* mem, const char* comment) {
+    void heap_deallocate(void* mem, const char* comment) {
         if (mem) {
             _freeMem(mem,  comment);
         }
