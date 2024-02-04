@@ -56,7 +56,7 @@ namespace apk {
             switch(mode) {
                 default:
                     return -1;
-                case SeekMode::Cur:
+                case SeekMode::Current:
                     m_pos += offset;
                 break;
                 case SeekMode::Set:

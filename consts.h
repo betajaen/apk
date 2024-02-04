@@ -6,10 +6,11 @@ namespace apk {
 
     enum class SeekMode {
         Set,
-        Cur,
+        Current,
         End,
         GetPos,
-        GetSize
+        GetSize,
+        CanSeek
     };
 
 }

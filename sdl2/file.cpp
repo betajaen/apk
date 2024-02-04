@@ -7,40 +7,18 @@
 
 namespace apk {
 
-    class FileImpl {
-    public:
-        FILE* fh;
-        uint32 size;
+    constexpr APK_SIZE_TYPE kMaxPathLength = 256;
+
+    struct ReadFileData {
+        FILE*  fh;
+        int32  size;
+        int32  pos;
     };
 
-    ReadFile::ReadFile() {
-        m_impl = NULL;
-    }
-
-    ReadFile::~ReadFile() {
-        close();
-    }
-
-    bool ReadFile::close() {
-        if (m_impl) {
-            fclose(m_impl->fh);
-            apk_delete(m_impl);
-            m_impl = NULL;
-
-            return true;
-        }
-        return false;
-    }
-
-    bool ReadFile::isOpen() const {
-        return m_impl;
-    }
-
     bool ReadFile::open(const char* path) {
-        char diskPath[256] = { 0 };
-
         close();
-
+        
+        char diskPath[kMaxPathLength];
         sprintf_s(diskPath, sizeof(diskPath), "%s", path);
 
         FILE* fh = fopen(diskPath, "r");
@@ -50,135 +28,101 @@ namespace apk {
             return false;
         }
 
-        m_impl = apk_new FileImpl();
-        m_impl->fh = fh;
+        m_data = apk_new ReadFileData();
+        m_data->fh = fh;
+        m_data->pos = 0;
+        m_data->size = 0;
 
-        fseek(m_impl->fh, 0, SEEK_END);
-        m_impl->size = ftell(m_impl->fh);
-        fseek(m_impl->fh, 0, SEEK_SET);
+        fseek(m_data->fh, 0, SEEK_END);
+        m_data->size = ftell(m_data->fh);
+        fseek(m_data->fh, 0, SEEK_SET);
 
         return true;
     }
 
-    uint32 ReadFile::size() const {
-        if (m_impl) {
-            return m_impl->size;
-        }
-        return 0;
-    }
-
-    bool ReadFile::exists(const char* path) {
-        char diskPath[256] = { 0 };
-
-        sprintf_s(diskPath, sizeof(diskPath), "%s", path);
-        FILE* fh = fopen(diskPath, "r");
-
-        if (fh == NULL) {
-            return false;
-        }
-
-        fclose(fh);
-        return true;
-    }
-
-
-    int32 ReadFile::seek(int32 where, SeekMode mode) {
-        assert(m_impl);
-        switch(mode) {
-            default:
-                return -1;
-            case SeekMode::Set:
-                return fseek(m_impl->fh, where, SEEK_SET) == 0;
-            case SeekMode::Cur:
-                return fseek(m_impl->fh, where, SEEK_CUR) == 0;
-            case SeekMode::End:
-                return fseek(m_impl->fh, where, SEEK_END) == 0;
-        }
-    }
-
-    uint32 ReadFile::read(void* data, uint32 size) {
-        assert(m_impl);
-        uint32 rv = fread(data, size, 1, m_impl->fh);
-        return rv;
-    }
-
-    int16 ReadFile::readSint16BE() {
-        int16 value;
-        read(&value, sizeof(value));
-        return endian::pod<int16, endian::Big>(value);
-    }
-
-    int32 ReadFile::readSint32BE() {
-        int32 value;
-        read(&value, sizeof(value));
-        return endian::pod<int32, endian::Big>(value);
-    }
-
-    uint16 ReadFile::readUint16BE() {
-        uint16 value;
-        read(&value, sizeof(value));
-        return endian::pod<uint16, endian::Big>(value);
-    }
-
-    uint32 ReadFile::readUint32BE() {
-        uint32 value;
-        read(&value, sizeof(value));
-        return endian::pod<uint32, endian::Big>(value);
-    }
-
-
-    AppendFile::AppendFile() {
-        m_impl = NULL;
-    }
-
-    AppendFile::~AppendFile() {
-        close();
-    }
-
-    bool AppendFile::close() {
-        if (m_impl) {
-            fclose(m_impl->fh);
-            apk_delete(m_impl);
-            m_impl = NULL;
-
+    bool ReadFile::close() {
+        if (m_data) {
+            fclose(m_data->fh);
+            apk_delete(m_data);
+            m_data = nullptr;
             return true;
         }
         return false;
     }
 
-    bool AppendFile::isOpen() const {
-        return m_impl;
+    int32 ReadFile::size() const {
+        if (m_data) {
+            return m_data->size;
+        }
+        else {
+            return -1;
+        }
     }
 
-    bool AppendFile::open(const char* path) {
-        char diskPath[256] = { 0 };
+    int32 ReadFile::pos() const {
+        if (m_data) {
+            return m_data->pos;
+        }
+        else {
+            return -1;
+        }        
+    }
 
-        close();
+    int32 ReadFile::seek(int32 where, SeekMode mode) {
+        if (m_data) {
 
-        sprintf_s(diskPath, sizeof(diskPath), "%s", path);
+            int32 rv = -1;
+            switch(mode) {
+                default:
+                    return -1;
+                case SeekMode::Set: {
+                    rv = fseek(m_data->fh, where, SEEK_SET);
+                    break;
+                }
+                case SeekMode::Current: {
+                    rv = fseek(m_data->fh, where, SEEK_CUR);
+                    break;
+                }
+                case SeekMode::End: {
+                    rv = fseek(m_data->fh, where, SEEK_END);
+                    break;
+                }
+                case SeekMode::CanSeek:
+                    return 1;
+                case SeekMode::GetPos:
+                    return m_data->pos;
+                case SeekMode::GetSize:
+                    return m_data->size;
+            }
 
-        FILE* fh = fopen(diskPath, "w");
+            if (rv != 0) {
+                return -1;
+            }
+            m_data->pos = ftell(m_data->fh);
+            return m_data->pos;
+        }
+        else {
+            return -1;
+        }
+    }
 
-        if (fh == NULL) {
-            error("Could not open '%s' for appending!\n", diskPath);
-            return false;
+    int32 ReadFile::read(void* data, int32 size) {
+        if (m_data == nullptr) {
+            return -1;
         }
 
-        m_impl = apk_new FileImpl();
-        m_impl->fh = fh;
+        int32 rv = fread(data, size, 1, m_data->fh);
+        if (rv < 0) {
+            return -1;
+        }
 
-        fseek(m_impl->fh, 0, SEEK_END);
-        m_impl->size = ftell(m_impl->fh);
-        fseek(m_impl->fh, 0, SEEK_SET);
+        m_data->pos += rv;
 
-        return true;
-    }
-
-    uint32 AppendFile::write(void* data, uint32 size) {
-        assert(m_impl);
-        uint32 rv = fwrite(data, size, 1, m_impl->fh);
         return rv;
     }
+
+
+
 
 
 }

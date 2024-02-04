@@ -7,102 +7,159 @@
 #include "apk/compat.h"
 #include "apk/consts.h"
 #include "apk/endian.h"
+#include "apk/assert.h"
 
 namespace apk {
 
-    typedef APK_SSIZE_TYPE (*ReadStreamFunction)(const void* udata, void* dst, APK_SIZE_TYPE size);
-    typedef APK_SSIZE_TYPE (*WriteStreamFunction)(const void* udata, const void* dst, APK_SIZE_TYPE size);
-    typedef APK_SSIZE_TYPE (*SeekStreamFunction)(const void* udata, APK_SSIZE_TYPE amount, SeekMode where);
+    constexpr int32 kStreamMaxSize = 0x7FFFFFFF; // ~2 GiB.
 
-    class ReadStream {
-        const void* m_udata;
-        const ReadStreamFunction m_read_function;
-        const SeekStreamFunction m_seek_function;
-        const int32 m_endian;
-    public:
-        ReadStream(const ReadStreamFunction readFn, const SeekStreamFunction seekFn, const void* udata, const int32 src_endian);
+    struct MemoryBuffer;
 
-        bool canSeek() const;
+    template<typename T>
+    struct StreamData;
 
-        APK_SSIZE_TYPE pos();
-        
-        APK_SSIZE_TYPE size();
+    template<typename TData>
+    struct ReadStream {
+        protected:
+            TData* m_data;
+            int32  m_lower_bound;
+            int32  m_upper_bound;
+            
+            inline void setNull() {
+                m_data = nullptr;
+                m_lower_bound = 0L;
+                m_upper_bound = 0L;
+            }
+            
+            void gain(TData* newData) {
+                if (m_data) {
+                    lose();
+                }
 
-        APK_SSIZE_TYPE seek(APK_SSIZE_TYPE size, SeekMode mode);
+                m_data = newData;
 
-        APK_SSIZE_TYPE read(void* dst, APK_SIZE_TYPE size);
+                if (m_data) {
+                    m_data->ref++;
+                }
+            }
 
-        bool skip(APK_SIZE_TYPE offset);
+            void lose() {
+                if (m_data) {
+                    m_data->ref--;
+                    if (m_data->ref == 0) {
+                        m_data->close();
+                        apk_deallocate(m_data);
+                    }
+                    m_data = nullptr;
+                }
+                m_lower_bound = 0;
+                m_upper_bound = 0;
+            }
 
-        byte readByte();
+            ReadStream(TData* udata,  int32 lower_bound, int32 upper_bound) {
+                m_data = udata;
+                m_lower_bound = lower_bound;
+                m_upper_bound = upper_bound;
+                
+            }
 
-        uint16 readUint16();
+        public:
 
-        int16 readInt16();
+            friend ReadStream OpenFileStream(const char* path, int32 endian);
 
-        inline int16 readSint16() { return readInt16(); }
-        
-        uint32 readUint32();
+            ReadStream() {
+                setNull();
+            }
 
-        int32 readInt32();
+            ReadStream(const ReadStream& s) {
+                setNull();
+                gain(s.m_data);
+                m_upper_bound = s.m_upper_bound;
+                m_lower_bound = s.m_lower_bound;
+            }
 
-        inline int32 readSint32() { return readInt32(); }
+            ReadStream(ReadStream&& s) {
+                setNull();
+                swap(s.m_data, m_data);
+                swap(s.m_upper_bound, m_upper_bound);
+                swap(s.m_lower_bound, m_lower_bound);
+            }
 
-        uint16 readUint16BE();
+            ~ReadStream() {
+                lose();
+            }
 
-        int16 readInt16BE();
+            ReadStream& operator=(const ReadStream& s) {
+                lose();
+                gain(s.m_data);
+                m_upper_bound = s.m_upper_bound;
+                m_lower_bound = s.m_lower_bound;
+            }
 
-        inline int16 readSint16BE() { return readInt16BE(); }
-        
-        uint32 readUint32BE();
+            ReadStream& operator=(ReadStream&& s) {
+                lose();
+                swap(s.m_data, m_data);
+                swap(s.m_upper_bound, m_upper_bound);
+                swap(s.m_lower_bound, m_lower_bound);
+            }
 
-        int32 readInt32BE();
+            int32 seek(int32 offset, SeekMode mode) {
+                if (m_data) {
+                    return m_data->seek(offset, mode, m_lower_bound, m_upper_bound);
+                }
+                else {
+                    return -1;
+                }
+            }
 
-        inline int32 readSint32BE() { return readInt32BE(); }
-        
-        uint16 readUint16LE();
+            inline bool trySeek(int32 offset, SeekMode mode) {
+                return seek(offset, mode) != -1;
+            }
 
-        int16 readInt16LE();
+            int32 read(void* dst, int32 size) {
+                if (m_data) {
+                    return m_data->read(dst, size, m_upper_bound);
+                }
+                else {
+                    return -1;
+                }
+            }
 
-        inline int16 readSint16LE() { return readInt16LE(); }
-        
-        uint32 readUint32LE();
+            inline int32 readByte() {
+                byte v;
+                int32 rv = read(&v, sizeof(v));
+                if (rv != sizeof(v)) {
+                    return -1;
+                }
+                return v;
+            }
 
-        int32 readInt32LE();
+            template<typename T>
+            bool tryReadPod(T& value) {
+                T v = {};
+                int32 rv = read(&v, sizeof(T));
+                if (rv != sizeof(T)) {
+                    return false;
+                }
+                value = endian::read_from(v, m_data->src_endian); 
+                return true;
+            }
 
-        inline int32 readSint32LE() { return readInt32LE(); }
+            template<typename T>
+            bool tryReadPod(T& value, const T& defaultValue) {
+                T v = {};
+                int32 rv = read(&v, sizeof(T));
+                if (rv != sizeof(T)) {
+                    value = endian::read_from(v, m_data->src_endian); 
+                    return true;
+                }
+                else {
+                    value = defaultValue;
+                    return false;
+                }
+            }
 
     };
 
-    class WriteStream {
-        const void* m_udata;
-        const WriteStreamFunction m_write_function;
-        const SeekStreamFunction m_seek_function;
-        const int32 m_endian;
-    public:
-        WriteStream(const WriteStreamFunction readFn, const SeekStreamFunction seekFn, const void* udata, const int32 dst_endian);
-
-        bool canSeek() const;
-
-        APK_SSIZE_TYPE pos();
-        
-        APK_SSIZE_TYPE size();
-
-        APK_SSIZE_TYPE seek(APK_SSIZE_TYPE size, SeekMode mode);
-
-        APK_SSIZE_TYPE write(const void* dst, APK_SIZE_TYPE size);
-
-        bool skip(APK_SIZE_TYPE offset);
-
-        void writeByte(byte value);
-
-        void writeUint16(uint16 value);
-
-        void writeInt16(int16 value);
-        
-        void writeUint32(uint32 value);
-
-        void writeInt32(int32 value);
-    };
 
 }
