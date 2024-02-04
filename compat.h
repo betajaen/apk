@@ -72,7 +72,7 @@ namespace apk {
         x = move(tmp);
     }
 
-    template<typename T, void(*FDeallocator)(T*) = impl::delete_implementation>
+    template<typename T, void(*FDeallocator)(T*) = impl::delete_implementation, void(*FSwap)(T*&,T*&) = swap>
     struct unique_ptr {
         private:
             T* m_ptr;
@@ -80,12 +80,12 @@ namespace apk {
             unique_ptr() : m_ptr(nullptr) {}
             unique_ptr(T*&& ptr) noexcept {
                 m_ptr = nullptr;
-                swap(m_ptr, ptr);
+                FSwap(m_ptr, ptr);
             }
             
             unique_ptr(unique_ptr<T>&& s) noexcept {
                 m_ptr = nullptr;
-                swap(m_ptr, s.m_ptr);
+                FSwap(m_ptr, s.m_ptr);
             }
 
             unique_ptr(unique_ptr<T>& s) = delete;
@@ -102,7 +102,8 @@ namespace apk {
 
             unique_ptr<T>& operator=(unique_ptr<T>&& s) noexcept {
                 release();
-                swap(m_ptr, s.m_ptr);
+                FSwap(m_ptr, s.m_ptr);
+                return *this;
             }
 
             void release() {
@@ -110,6 +111,10 @@ namespace apk {
                     FDeallocator(m_ptr);
                     m_ptr = nullptr;
                 }
+            }
+
+            void swap(unique_ptr<T>& s) {
+                FSwap(m_ptr, s.m_ptr);
             }
 
             T* get() {
@@ -137,6 +142,11 @@ namespace apk {
             }
     };
 
+    template<typename T>
+    void swap(unique_ptr<T>& x, unique_ptr<T>& y) {
+        x.swap(y);
+    }
+
 }
 
 void* APK_ATTR_WEAK operator new(APK_SIZE_TYPE size, void* p);
@@ -160,3 +170,25 @@ void* APK_ATTR_WEAK operator new(APK_SIZE_TYPE size, const char* comment);
     T& operator=(const T&) = delete; \
     T(T&&) = delete; \
     T& operator=(T&&) = delete;
+
+
+#define apk_unique_like(ThisClass, FNullFunction, FReleaseFunction, FSwapFunction) \
+        ThisClass() { \
+            FNullFunction(); \
+        } \
+        ThisClass(ThisClass&& s) noexcept { \
+            FNullFunction(); \
+            FSwapFunction(s); \
+        } \
+        ThisClass(ThisClass& s) = delete; \
+        ThisClass(const ThisClass& s) = delete; \
+        ~ThisClass() { \
+            FReleaseFunction(); \
+        }\
+        ThisClass& operator=(ThisClass& s) = delete; \
+        ThisClass& operator=(const ThisClass& s) = delete; \
+        ThisClass& operator=(ThisClass&& s) noexcept { \
+            FReleaseFunction(); \
+            FSwapFunction(s); \
+            return *this; \
+        }
