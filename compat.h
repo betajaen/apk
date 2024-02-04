@@ -14,6 +14,7 @@ namespace apk {
 
     namespace impl {
 
+
         template<typename T>
         inline void delete_implementation(T*& mem, const char* comment) {
             if (mem) {
@@ -23,6 +24,10 @@ namespace apk {
             }
         }
 
+        template<typename T>
+        inline void delete_implementation(T*& mem) {
+            delete_implementation(mem, nullptr);
+        }
     }
     
     template<typename T>
@@ -57,7 +62,7 @@ namespace apk {
 
     template<typename T>
     typename remove_reference<T>::Type&& move(T&& x) noexcept {
-        return static_cast<typename remove_reference<T>::type&&>(x);
+        return static_cast< typename remove_reference<T>::Type &&>(x);
     }
 
     template<typename T>
@@ -67,6 +72,70 @@ namespace apk {
         x = move(tmp);
     }
 
+    template<typename T, void(*FDeallocator)(T*) = impl::delete_implementation>
+    struct unique_ptr {
+        private:
+            T* m_ptr;
+        public:
+            unique_ptr() : m_ptr(nullptr) {}
+            unique_ptr(T*&& ptr) noexcept {
+                m_ptr = nullptr;
+                swap(m_ptr, ptr);
+            }
+            
+            unique_ptr(unique_ptr<T>&& s) noexcept {
+                m_ptr = nullptr;
+                swap(m_ptr, s.m_ptr);
+            }
+
+            unique_ptr(unique_ptr<T>& s) = delete;
+            unique_ptr(const unique_ptr<T>& s) = delete;
+
+            unique_ptr(T*&) = delete;
+
+            ~unique_ptr() {
+                release();
+            }
+
+            unique_ptr<T>& operator=(unique_ptr<T>& s) = delete;
+            unique_ptr<T>& operator=(const unique_ptr<T>& s) = delete;
+
+            unique_ptr<T>& operator=(unique_ptr<T>&& s) noexcept {
+                release();
+                swap(m_ptr, s.m_ptr);
+            }
+
+            void release() {
+                if (m_ptr) {
+                    FDeallocator(m_ptr);
+                    m_ptr = nullptr;
+                }
+            }
+
+            T* get() {
+                return m_ptr;
+            }
+
+            const T* get() const {
+                return m_ptr;
+            }
+
+            T* operator*() {
+                return m_ptr;
+            }
+
+            const T* operator*() const {
+                return m_ptr;
+            }
+
+            T* operator->() {
+                return m_ptr;
+            }
+
+            const T* operator->() const {
+                return m_ptr;
+            }
+    };
 
 }
 
