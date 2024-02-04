@@ -21,6 +21,7 @@
 #include "debug.h"
 #include "pool.h"
 #include "bank.h"
+#include "stream.h"
 
 namespace apk {
 
