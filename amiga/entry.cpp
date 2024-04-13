@@ -1,10 +1,14 @@
 // APK - Copyright (c) 2024 by Robin Southern. https://github.com/betajaen/apk
 // Licensed under the MIT License; see LICENSE file.
 
+
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/intuition.h>
 #include <proto/asl.h>
+#include <proto/icon.h>
+#include <apk/requester.h>
+#include <apk/text.h>
 
 #include <dos/dos.h>
 #include <workbench/workbench.h>
@@ -24,6 +28,10 @@ extern struct WBStartup* _WBenchMsg;
 
 extern int apk_main();
 
+namespace apk { namespace prefs {
+	extern struct DiskObject* sDiskObject;
+}}
+
 int main(void) {
     int rv;
 
@@ -33,7 +41,7 @@ int main(void) {
 
 	struct Task*thisTask = FindTask(NULL);
 	ULONG currentStack=(ULONG) thisTask->tc_SPUpper-(ULONG)thisTask->tc_SPLower;
-
+	
 	if (currentStack < MIN_STACK_SIZE) {
 
 		if (_WBenchMsg) {
@@ -75,6 +83,20 @@ int main(void) {
 		CloseLibrary((struct Library*)DOSBase);
 		return RETURN_FAIL;
 	}
+	
+	if ((IconBase = OpenLibrary("icon.library", 37)) == NULL) {
+		CloseLibrary((struct Library*)AslBase);
+		CloseLibrary((struct Library*)GfxBase);
+		CloseLibrary((struct Library*)IntuitionBase);
+		CloseLibrary((struct Library*)DOSBase);
+		return RETURN_FAIL;
+	}
+
+	if (_WBenchMsg) {
+		char executablePath[65];
+		::apk::sprintf_s(executablePath, sizeof(executablePath), "PROGDIR:%s", _WBenchMsg->sm_ArgList[0].wa_Name);
+		::apk::prefs::sDiskObject = GetDiskObject(executablePath);
+	}
 
 	rv = apk_main();
 
@@ -94,6 +116,7 @@ int main(void) {
 	}
 #endif
 
+	CloseLibrary((struct Library*)IconBase);
 	CloseLibrary((struct Library*)AslBase);
 	CloseLibrary((struct Library*)GfxBase);
 	CloseLibrary((struct Library*)IntuitionBase);

@@ -28,7 +28,7 @@ namespace apk {
         int32 createSpriteBank(uint16 width, uint16 height, uint16 numSprites) {
             assert(width > 0 && width <= 16);
             assert(height > 0);
-            numSprites = max((uint16) 1, numSprites);
+            numSprites = MAX((uint16) 1, numSprites);
             SpriteBank* bank = &s_SpriteBanks[0];
             for(uint16 i=0;i < MAX_SPRITE_BANKS;i++) {
                 if (bank->m_Width == 0) {
@@ -71,7 +71,7 @@ namespace apk {
                     return NULL;
                 }
 
-                spriteNum = min(spriteNum, bank->m_NumSprites - 1);
+                spriteNum = MIN(spriteNum, bank->m_NumSprites - 1);
                 *outSize = bank->m_SpriteDataSize;
                 *outWidth = bank->m_Width;
                 *outHeight = bank->m_Height;
@@ -91,7 +91,7 @@ namespace apk {
                     return NULL;
                 }
 
-                spriteNum = min(spriteNum, bank->m_NumSprites - 1);
+                spriteNum = MIN(spriteNum, bank->m_NumSprites - 1);
                 *outSize = bank->m_SpriteDataSize - (sizeof(UWORD) * 4);
                 return bank->m_Data + (bank->m_SpriteDataSize * (uint32) spriteNum) + sizeof(UWORD) * 2;
             }

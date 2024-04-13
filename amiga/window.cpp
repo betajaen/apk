@@ -55,11 +55,14 @@ __chip UWORD s_Cursor[] = {
 
 namespace apk {
 
+    void gameBeginPause();
+    void gameEndPause();
+
     namespace bank {
         void* getSpriteBankData(int32 bankNum, uint16 spriteNum, uint32* outSize, uint16* outWidth, uint16* outHeight, int16* offsetX, int16* offsetY);
     }
 
-    namespace gfx {
+    namespace video {
 
 		struct Window* mWindow;
         static bool mWindowLoopStop = FALSE;
@@ -295,6 +298,7 @@ namespace apk {
             mWindowLoopStop = FALSE;
             uint32 mouseX = 0, mouseY = 0;
             int32 reportedMouse = -1;
+            bool isPaused = false;
 
 		    while (mWindowLoopStop == false) {
 
@@ -312,6 +316,21 @@ namespace apk {
                         Event evt;
                         evt.type = EVENT_NONE;
 
+                        if (isPaused) {
+                            if ((msg->Class == IDCMP_RAWKEY && msg->Code == 0x40) ||
+                                (msg->Class == IDCMP_VANILLAKEY && msg->Code == ' '))
+                            {
+                                isPaused = false;
+                                ReplyMsg((struct Message*)msg);
+                                apk::gameEndPause();
+                                continue;
+                            }
+                            else {
+                                ReplyMsg((struct Message*)msg);
+                            }
+                            continue;
+                        }
+
                         switch (msg->Class)
                         {
                             case IDCMP_CLOSEWINDOW: {
@@ -323,12 +342,22 @@ namespace apk {
                                     mWindowLoopStop = TRUE;
                                 }
                                 else if (msg->Code == ' ') {
-                                    evt.type = EVENT_KEYINSTANT;
-                                    evt.kbd.keycode = 0x40;
+                                    isPaused = true;
+                                    ReplyMsg((struct Message*)msg);
+                                    apk::gameBeginPause();
+                                    continue;
                                 }
                             }
                             break;
                             case IDCMP_RAWKEY: {
+
+                                if (msg->Code == 0x40) {
+                                    isPaused = true;
+                                    ReplyMsg((struct Message*)msg);
+                                    apk::gameBeginPause();
+                                    continue;
+                                }
+
                                 mouseX = msg->MouseX;
                                 mouseY = msg->MouseY;
 
@@ -383,22 +412,28 @@ namespace apk {
 
                 if (signal & timerBit) {
                     if (mTimer.isReady()) {
-                        
-                        if (reportedMouse == 0) {
-                            Event evt;
-                            evt.type = EVENT_MOUSEMOVE;
-                            evt.mouse.x = mouseX;
-                            evt.mouse.y = mouseY;
-                            const auto& wcb = s_EventFns.top();
-                            wcb.fn(wcb.data, evt);
-                            reportedMouse = -1;
+                        if (isPaused) {
+                            mTimer.start(waitTime_usec);
+                        }
+                        else {
+                            if (reportedMouse == 0) {
+                                Event evt;
+                                evt.type = EVENT_MOUSEMOVE;
+                                evt.mouse.x = mouseX;
+                                evt.mouse.y = mouseY;
+                                const auto& wcb = s_EventFns.top();
+                                wcb.fn(wcb.data, evt);
+                                reportedMouse = -1;
+                            }
+
+                            const auto& tcb = s_TimerFns.top();
+                            tcb.fn(tcb.data);
+
+                            mTimer.start(waitTime_usec);
+
+                            paletteFunction();
                         }
 
-                        const auto& tcb = s_TimerFns.top();
-                        tcb.fn(tcb.data);
-                        mTimer.start(waitTime_usec);
-
-                        paletteFunction();
                     }
                 }
 
@@ -424,7 +459,7 @@ namespace apk {
     }
 
     bool isQuitRequested() {
-        return gfx::mWindowLoopStop;
+        return video::mWindowLoopStop;
     }
 
     

@@ -1,126 +1,240 @@
 // APK - Copyright (c) 2024 by Robin Southern. https://github.com/betajaen/apk
 // Licensed under the MIT License; see LICENSE file.
 
-#include "apk/apk.h"
-#include "apk/file.h"
+#include <apk/apk.h>
+#include <apk/file.h>
+#include <apk/text.h>
 
 #include <proto/dos.h>
 
-namespace apk {
+namespace apk { namespace fs {
+    static char s_ProgDir[256] = "PROGDIR:";
+}}
 
-    constexpr APK_SIZE_TYPE kMaxPathLength = 256;
+namespace apk { namespace path {
 
-    class ReadFileData {
-    public:
-        BPTR  fh;
-        LONG  size;
-        LONG  pos;
-    };
+    PathType test(const char* path) {
+        char fullPath[255];
+        FileInfoBlock* fib;
+        PathType rv = PathType::None;
 
-    bool ReadFile::open(const char* path) {
-        close();
-        
-        char diskPath[kMaxPathLength];
-        sprintf_s(diskPath, sizeof(diskPath), "%s", path);
+        apk::strcpy_s(fullPath, sizeof(fullPath), fs::s_ProgDir);
+        AddPart(fullPath, path, sizeof(fullPath));
+        BPTR lock = Lock(fullPath, ACCESS_READ);
 
-        BPTR fh = Open(diskPath, MODE_OLDFILE);
+        if (lock != 0UL) {
+            fib = (FileInfoBlock*) AllocDosObject(DOS_FIB, TAG_END);
+            if (fib && Examine(lock, fib)) {
+                rv = (fib->fib_DirEntryType < 0) ? PathType::File : PathType::DrawerVolume;
+                FreeDosObject(DOS_FIB, fib);
+            }
+            UnLock(lock);
 
-        if (fh == 0UL) {
-            error("File '%s' could not be found in path!\n", diskPath);
-            return false;
+            return rv;
+        }
+        return rv;
+    }
+
+}}
+
+namespace apk { namespace fs {
+
+    void setProgramDir(const char* path) {
+        if (apk::string_endswith(path, "/") || apk::string_endswith(path, ":")) {
+            apk::strcpy_s(s_ProgDir, sizeof(s_ProgDir), path);
+        }
+        else {
+            apk::sprintf_s(s_ProgDir, sizeof(s_ProgDir), "%s/", path);
         }
 
-        m_data = apk_new ReadFileData();
-        m_data->fh = fh;
-        m_data->pos = 0;
-        m_data->size = 0;
+    }
 
-        Seek(fh, 0, OFFSET_END);
-        m_data->size = Seek(fh, 0, OFFSET_BEGINNING);
+    const char* getProgramDir() {
+        return s_ProgDir;
+    }
 
-        return true;
+}}
+
+namespace apk {
+
+
+    class FileImpl {
+    public:
+        ULONG fh;
+        ULONG size;
+    };
+
+    ReadFile::ReadFile() {
+        m_impl = NULL;
+    }
+
+    ReadFile::~ReadFile() {
+        close();
     }
 
     bool ReadFile::close() {
-        if (m_data) {
-            Close(m_data->fh);
-            apk_delete(m_data);
-            m_data = nullptr;
+        if (m_impl) {
+            Close(m_impl->fh);
+            apk_delete(m_impl);
+            m_impl = NULL;
             return true;
         }
         return false;
     }
 
-    int32 ReadFile::size() const {
-        if (m_data) {
-            return m_data->size;
+    bool ReadFile::isOpen() const {
+        return m_impl != NULL;
+    }
+
+    bool ReadFile::open(const char* path) {
+        close();
+
+        char diskPath[256] = { 0 };
+
+        if (strchr(path, ':') == NULL) {
+            sprintf_s(diskPath, sizeof(diskPath), "%s%s", fs::s_ProgDir, path);
         }
         else {
-            return -1;
+            sprintf_s(diskPath, sizeof(diskPath), "%s", path);
+        }
+
+        ULONG fh = Open(diskPath, MODE_OLDFILE);
+        if (fh == 0UL) {
+            return false;
+        }
+
+        m_impl = apk_new FileImpl();
+        m_impl->fh = fh;
+        Seek(fh, 0, OFFSET_END);
+        m_impl->size = Seek(fh, 0, OFFSET_BEGINNING);
+
+        return true;
+    }
+
+    uint32 ReadFile::size() const {
+
+        if (m_impl == NULL) {
+            return 0;
+        }
+
+        return m_impl->size;
+    }
+
+    bool ReadFile::exists(const char* path) {
+
+        char diskPath[256] = { 0 };
+        if (strchr(path, ':') == NULL) {
+            sprintf_s(diskPath, sizeof(diskPath), "%s%s", fs::s_ProgDir, path);
+        }
+        else {
+            sprintf_s(diskPath, sizeof(diskPath), "%s", path);
+        }
+
+        ULONG fh = Open(diskPath, MODE_OLDFILE);
+
+        if (fh == 0UL) {
+            return false;
+        }
+
+        Close(fh);
+
+        return true;
+    }
+
+
+    bool ReadFile::seek(int32 where, int32 mode) {
+        assert(m_impl);
+
+        switch(mode) {
+            default:
+                return false;
+            case kSEEK_SET:
+                return Seek(m_impl->fh, where, OFFSET_BEGINNING) != 0;
+            case kSEEK_CUR:
+                return Seek(m_impl->fh, where, OFFSET_CURRENT) != 0;
+            case kSEEK_END:
+                return Seek(m_impl->fh, where, OFFSET_END) != 0;
         }
     }
 
-    int32 ReadFile::pos() const {
-        if (m_data) {
-            return m_data->pos;
-        }
-        else {
-            return -1;
-        }        
+    uint32 ReadFile::read(void* data, uint32 size) {
+        assert(m_impl);
+
+        return (ULONG) Read(m_impl->fh, data, size);
     }
 
-    int32 ReadFile::seek(int32 where, SeekMode mode) {
-        if (m_data) {
-
-            int32 rv = -1;
-            switch(mode) {
-                default:
-                    return -1;
-                case SeekMode::Set: {
-                    rv = Seek(m_data->fh, where, OFFSET_BEGINNING);
-                    break;
-                }
-                case SeekMode::Current: {
-                    rv = Seek(m_data->fh, where, OFFSET_CURRENT);
-                    break;
-                }
-                case SeekMode::End: {
-                    rv = Seek(m_data->fh, where, OFFSET_END);
-                    break;
-                }
-                case SeekMode::CanSeek:
-                    return 1;
-                case SeekMode::GetPos:
-                    return m_data->pos;
-                case SeekMode::GetSize:
-                    return m_data->size;
-            }
-
-            if (rv != 0) {
-                return -1;
-            }
-
-            m_data->pos = Seek(m_data->fh, 0, OFFSET_CURRENT);
-            return m_data->pos;
-        }
-        else {
-            return -1;
-        }
+    int16 ReadFile::readSint16BE() {
+        int16 value;
+        read(&value, sizeof(value));
+        return endian::pod<int16, endian::Big>(value);
     }
 
-    int32 ReadFile::read(void* data, int32 size) {
-        if (m_data == nullptr) {
-            return -1;
+    int32 ReadFile::readSint32BE() {
+        int32 value;
+        read(&value, sizeof(value));
+        return endian::pod<int32, endian::Big>(value);
+    }
+
+    uint16 ReadFile::readUint16BE() {
+        uint16 value;
+        read(&value, sizeof(value));
+        return endian::pod<uint16, endian::Big>(value);
+    }
+
+    uint32 ReadFile::readUint32BE() {
+        uint32 value;
+        read(&value, sizeof(value));
+        return endian::pod<uint32, endian::Big>(value);
+    }
+
+
+    AppendFile::AppendFile() {
+        m_impl = NULL;
+    }
+
+    AppendFile::~AppendFile() {
+        close();
+    }
+
+    bool AppendFile::open(const char* path) {
+        close();
+
+        char diskPath[256] = { 0 };
+        if (strchr(path, ':') == NULL) {
+            sprintf_s(diskPath, sizeof(diskPath), "%s%s", fs::s_ProgDir, path);
+        }
+        else {
+            sprintf_s(diskPath, sizeof(diskPath), "%s", path);
         }
 
-        int32 rv =  Read(m_data->fh, data, size);
-        if (rv < 0) {
-            return -1;
+        ULONG fh = Open(diskPath, MODE_NEWFILE);
+        if (fh == 0UL) {
+            return false;
         }
 
-        m_data->pos += rv;
+        m_impl = apk_new FileImpl();
+        m_impl->fh = fh;
+        m_impl->size = 0;
 
-        return rv;
+        return true;
+    }
+
+    bool AppendFile::close() {
+         if (m_impl) {
+            Close(m_impl->fh);
+            apk_delete(m_impl);
+            m_impl = NULL;
+            return true;
+        }
+        return false;
+    }
+
+    bool AppendFile::isOpen() const {
+        return m_impl != NULL;
+    }
+
+    uint32 AppendFile::write(void* data, uint32 size) {
+        return (ULONG) Write(m_impl->fh, data, size);
     }
 
 }

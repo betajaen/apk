@@ -11,12 +11,12 @@ static const ULONG LenChar = 0x52934e75;
 
 namespace apk {
 
-    void* heap_allocate(APK_SIZE_TYPE size, const char* comment) {
+    void* _apk_allocate(APK_SIZE_TYPE size, const char* comment) {
         size += size & 3; // align up.
         return AllocVec(size, MEMF_CLEAR);
     }
 
-    void heap_deallocate(void* mem, const char* comment) {
+    void _apk_deallocate(void* mem, const char* comment) {
         if (mem != NULL) {
             FreeVec(mem);
         }
@@ -50,81 +50,6 @@ namespace apk {
         }
     }
 
-    const char* strchr(const char* str, char c) {
-        while(*str != '\0') {
-            if (*str == c) {
-                return str;
-            }
-            str++;
-        }
-        return NULL;
-    }
-
-    const char* strrchr(const char* str, char c) {
-        debug("strrchr not implemented");
-        return NULL;
-    }
-
-    char* strchr(char* str, char c) {
-        while(*str != '\0') {
-            if (*str == c) {
-                return str;
-            }
-            str++;
-        }
-        return NULL;
-    }
-
-    char* strrchr(char* str, char c) {
-        debug("strrchr not implemented");
-        return NULL;
-    }
-
-    int strcmp(const char* lhs, const char* rhs) {
-
-        const unsigned char *p1 = ( const unsigned char * ) lhs;
-        const unsigned char *p2 = ( const unsigned char * ) rhs;
-
-        while ( *p1 && *p1 == *p2 ) ++p1, ++p2;
-
-        return ( *p1 > *p2 ) - ( *p2  > *p1 );
-    }
-
-    int strncmp(const char* lhs, const char* rhs, APK_SIZE_TYPE rhsLength) {
-
-        const unsigned char *p1 = ( const unsigned char * ) lhs;
-        const unsigned char *p2 = ( const unsigned char * ) rhs;
-
-        while ( *p1 && *p1 == *p2 && rhsLength) ++p1, ++p2, --rhsLength;
-
-        return ( *p1 > *p2 ) - ( *p2  > *p1 );
-    }
-
-    uint32 strlen(const char* str) {
-        uint32 length = 0;
-        while(*str++ != '\0') {
-            length++;
-        }
-        return length;
-    }
-
-    void strcpy(char* dst, const char* src) {
-        while(*src != '\0') {
-            *dst++ = *src++;
-        }
-        *dst = '\0';
-    }
-
-    void strlcpy(char* dst, const char* src, uint32 length) {
-        uint32 src_length = strlen(src);
-        uint32 amount_to_copy = length < src_length ? length : src_length;
-        while(amount_to_copy > 0) {
-            *dst++ = *src++;
-            amount_to_copy--;
-        }
-        *dst = '\0';
-    }
-
     void sprintf_s(char* dst, APK_SIZE_TYPE dst_length, const char* fmt, ...) {
 
 		uint32 length = 0;
@@ -138,13 +63,6 @@ namespace apk {
 		}
 
         RawDoFmt((CONST_STRPTR)fmt, (APTR)arg, (PUTCHARPROC)&PutChar, dst);
-    }
-
-    char toupper(char c) {
-        if (c >= 'a' && c <= 'z') {
-            c = c - 'a' + 'A';
-        }
-        return c;
     }
 
     bool string_startswith(const char* str, const char* prefix) {
@@ -167,6 +85,28 @@ namespace apk {
         }
 
         return strncmp(str + (strLen - suffixLen), suffix, suffixLen) == 0;
+    }
+
+    uint32 string_to_uint32(const char* str) {
+        if (str == NULL) {
+            return 0;
+        }
+
+        if ((str == NULL) || (str[0] == '\0') || (str[0] == '0' && str[1] == '\0')) {
+            return 0;
+        }
+
+        if (str[0] == '1' && str[1] == '\0') {
+            return 1;
+        }
+        
+        uint32 rv = 0;
+        while((*str != '\0') && (*str >= '0' && *str <= '9')) {
+            rv = rv * 10 + (*str - '0');
+            str++;
+        }
+
+        return rv;
     }
 
 }

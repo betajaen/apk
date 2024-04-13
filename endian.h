@@ -9,7 +9,6 @@ namespace apk::endian {
 
     constexpr int Little = 0;
     constexpr int Big = 1;
-    constexpr int NoChange = -1;
     
 #if defined(__AMIGA__)
     constexpr int Native = Big;
@@ -73,33 +72,6 @@ namespace apk::endian {
         for(uint32 i=0;i < length;i++) {
             *array = endian_swap<T, ESourceEndian, EDestEndian>(*array);
             array++;
-        }
-    }
-
-    template<typename T, int ETo = Native>
-    inline static T read_from(const T& v, int from_endian) {
-        switch(from_endian) {
-            default:
-            case NoChange:
-                return v;
-            case Little:
-                return endian_swap<T, Little, ETo>(v);
-            case Big:
-                return endian_swap<T, Big, ETo>(v);
-        }
-    }
-
-
-    template<typename T, int EFrom = Native>
-    inline static T write_to(const T& v, int to_endian) {
-        switch(to_endian) {
-            default:
-            case NoChange:
-                return v;
-            case Little:
-                return endian_swap<T, EFrom, Little>(v);
-            case Big:
-                return endian_swap<T, EFrom, Big>(v);
         }
     }
 

@@ -33,12 +33,16 @@ namespace apk {
     int32 s_SpriteOffsetY = 0;
     uint32 s_SpriteWidth = 0;
     uint32 s_SpriteHeight = 0;
+    static char sDebugStr[41];
+
+    void gameBeginPause();
+    void gameEndPause();
 
     static void blitVirtual(uint8* sprite, int32 spriteX, int32 spriteY, uint32 spriteWidth, uint32 spriteHeight, uint8 transparent) {
-        int32 x0 = max(0, spriteX);
-        int32 y0 = max(0, spriteY);
-        int32 x1 = min(x0 + spriteWidth, s_VirtualWidth);
-        int32 y1 = min(y0 + spriteHeight, s_VirtualHeight);
+        int32 x0 = MAX(0, spriteX);
+        int32 y0 = MAX(0, spriteY);
+        int32 x1 = MIN(x0 + spriteWidth, s_VirtualWidth);
+        int32 y1 = MIN(y0 + spriteHeight, s_VirtualHeight);
 
 		uint32 srcX0 = 0, srcY0 = 0;
         for(int32 j=y0;j < y1;j++) {
@@ -50,6 +54,27 @@ namespace apk {
 				if (colour != transparent) {
 					s_virtualSurface[dstIdx + i] = 17 + colour;
 				}
+                srcX0++;
+			}
+            srcY0++;
+		}
+
+    }
+    
+    static void blitSprite(uint8* sprite, int32 spriteX, int32 spriteY, uint32 spriteWidth, uint32 spriteHeight) {
+        int32 x0 = MAX(0, spriteX);
+        int32 y0 = MAX(0, spriteY);
+        int32 x1 = MIN(x0 + spriteWidth, s_VirtualWidth);
+        int32 y1 = MIN(y0 + spriteHeight, s_VirtualHeight);
+
+		uint32 srcX0 = 0, srcY0 = 0;
+        for(int32 j=y0;j < y1;j++) {
+			uint32 dstIdx = (j * s_VirtualWidth);
+            uint32 srcIdx = (srcY0 * spriteWidth);
+            uint32 srcX0 = 0;
+			for(int32 i=x0;i < x1;i++) {
+				uint8 colour = sprite[srcIdx + srcX0];
+				s_virtualSurface[dstIdx + i] = colour;
                 srcX0++;
 			}
             srcY0++;
@@ -310,7 +335,7 @@ namespace apk {
         return -1;
     }
 
-    namespace gfx {
+    namespace video {
 
 
     bool createScreen(const char* title, uint16 width, uint16 height, uint8 depth) {
@@ -347,18 +372,16 @@ namespace apk {
 
         SDL_ShowCursor(SDL_ENABLE);
 
-        if (s_virtualSurface) {
+        if (s_virtualSurface != NULL) {
             apk_deallocate(s_virtualSurface);
             s_virtualSurface = NULL;
         }
 
-        if (s_virtualSurface) {
-            SDL_DestroyWindow(s_screen);
+        if(s_screen != NULL) {
             s_screen = NULL;
+            s_VirtualWidth = 0;
+            s_VirtualHeight = 0;
         }
-
-        s_VirtualWidth = 0;
-        s_VirtualHeight = 0;
     }
 
     static void scaleCopy(SDL_Surface* dst, byte* src, uint32 scale, uint32 w, uint32 h) {
@@ -423,6 +446,41 @@ namespace apk {
         memset(s_virtualSurface, index, s_widthHeight);
     }
 
+    void fillRect(uint32 l, uint32 t, uint32 w, uint32 h, uint8 col) {
+        uint32 x0 = MAX(0U, l);
+        uint32 y0 = MAX(0U, t);
+        uint32 x1 = MIN(x0 + w, s_VirtualWidth);
+        uint32 y1 = MIN(y0 + h, s_VirtualHeight);
+
+        for(uint32 j=y0;j < y1;j++) {
+            for(uint32 i=x0;i < x1;i++) {
+                s_virtualSurface[i + j * s_VirtualWidth] = col;
+            }
+        }
+    }
+
+    void pasteIcon(uint8* img, uint32 x, uint32 y, uint32 w, uint32 h, uint8 transparent, uint8* pal) {
+        uint32 x0 = MAX(0U, x);
+        uint32 y0 = MAX(0U, y);
+        uint32 x1 = MIN(x0 + w, s_VirtualWidth);
+        uint32 y1 = MIN(y0 + h, s_VirtualHeight);
+
+		uint32 srcX0 = 0, srcY0 = 0;
+        for(int32 j=y0;j < y1;j++) {
+			uint32 dstIdx = (j * s_VirtualWidth);
+            uint32 srcIdx = (srcY0 * w);
+            uint32 srcX0 = 0;
+			for(int32 i=x0;i < x1;i++) {
+				uint8 colour = img[srcIdx + srcX0];
+                if (colour != transparent) {
+				    s_virtualSurface[dstIdx + i] = pal[colour];
+                }
+                srcX0++;
+			}
+            srcY0++;
+		}
+    }
+
     void setRGB(uint8 index, uint8 r, uint8 g, uint8 b) {
         s_palette[index*3 + 0] = r;
         s_palette[index*3 + 1] = g;
@@ -440,6 +498,10 @@ namespace apk {
         }
     }
 
+    void forceUpdateScreen() {
+        surfaceCopy();
+    }
+    
     void writeChunkyPixels(uint8* data) {
         blit(data, s_widthHeight);
         surfaceCopy();
@@ -459,7 +521,7 @@ namespace apk {
 
     void paletteFadeIn(uint32 steps) {
         if (sPaletteFading == 0) {
-            sPaletteFadeSteps = (int32) clip((int32)steps, (int32)1, (int32)255);
+            sPaletteFadeSteps = (int32) CLIP((int32)steps, (int32)1, (int32)255);
             sPaletteFadeTime = -255;
             sPaletteFadeDest = 0;
             sPaletteFading = 1;
@@ -468,7 +530,7 @@ namespace apk {
 
     void paletteFadeOut(uint32 steps) {
         if (sPaletteFading == 0) {
-            sPaletteFadeSteps = -(int32) clip((int32)steps, (int32)1, (int32)255);
+            sPaletteFadeSteps = -(int32) CLIP((int32)steps, (int32)1, (int32)255);
             sPaletteFadeTime = 255;
             sPaletteFadeDest = 0;
             sPaletteFading = -1;
@@ -486,7 +548,7 @@ namespace apk {
         }
     }
 
-    void paletteFunction() {
+    static void paletteFunction() {
 
         if (sPaletteFading == 0) {
             if (s_paletteDirty) {
@@ -578,9 +640,23 @@ namespace apk {
 
         uint32 mouseX = 0, mouseY = 0;
         int32 reportedMouse = -1;
+        bool isPaused = false;
 
         while(stopLoop == false) {
             SDL_WaitEvent(&evt);
+
+            if (isPaused) {
+                if (evt.type == SDL_KEYUP) {
+                    int32 kc = SDL2_To_AmigaKey(evt.key.keysym.sym);
+
+                    if (kc == APKK_SPACE) {
+                        isPaused = false;
+                        apk::gameEndPause();
+                        continue;
+                    }
+                }
+                continue;
+            }
 
             if (evt.type == s_UserEventType) {
                     if (evt.user.code == USER_EVENT_TIMER) {
@@ -611,10 +687,19 @@ namespace apk {
                     }
                     break;
                     case SDL_KEYUP: {
+                        int32 kc = SDL2_To_AmigaKey(evt.key.keysym.sym);
+
+                        if (kc == APKK_SPACE) {
+                            isPaused = true;
+                            apk::gameBeginPause();
+                            continue;
+                        }
+
                         Event e;
                         e.type = EVENT_KEYINSTANT;
                         e.kbd.keycode = SDL2_To_AmigaKey(evt.key.keysym.sym);
                         e.kbd.shift = evt.key.keysym.mod & KMOD_LSHIFT || evt.key.keysym.mod & KMOD_RSHIFT;
+
 
                         const auto& cb = s_EventFns.top();
                         cb.fn(cb.data, e);
@@ -705,8 +790,8 @@ namespace apk {
     }
 
     void setCursorChunky(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY) {
-        s_SpriteWidth = min(16, width);
-        s_SpriteHeight = min(16, height);
+        s_SpriteWidth = MIN(16, width);
+        s_SpriteHeight = MIN(16, height);
         s_SpriteOffsetX = offsetX;
         s_SpriteOffsetY = offsetY;
         uint32 copySize = width * height;
@@ -724,6 +809,11 @@ namespace apk {
         }
     }
 
-}
-}
 
+}}
+
+namespace apk {
+    void debug_str(const char* str) {
+        apk::strcpy_s(sDebugStr, sizeof(sDebugStr), str);
+    }
+}

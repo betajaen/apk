@@ -14,6 +14,8 @@ namespace apk {
     bool s_quitRequested = true;
 
     void gameMain();
+    void gameBeginPause();
+    void gameEndPause();
 
     bool isQuitRequested() {
         return s_quitRequested;
@@ -44,7 +46,7 @@ int main(void)
 
     apk::s_quitRequested = false;
     apk::gameMain();
-    apk::gfx::destroyScreen();
+    apk::video::destroyScreen();
 
     SDL_Quit();
 }

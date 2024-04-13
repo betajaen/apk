@@ -4,70 +4,86 @@
 #pragma once
 
 #include "pod.h"
-#include "compat.h"
 #include "consts.h"
-#include "stream.h"
+
+namespace apk { namespace fs {
+    
+    void setProgramDir(const char* path);
+    
+    const char* getProgramDir();
+
+}}
+
+namespace apk { namespace path {
+
+    enum class PathType {
+        None,
+        File,
+        DrawerVolume
+    };
+
+    PathType test(const char* path);
+
+}}
 
 namespace apk {
 
-    struct ReadFileData;
 
-    struct ReadFile {
-    private:
-        ReadFileData* m_data;
+    class FileImpl;
 
-        inline void null_impl() {
-            m_data = nullptr;
-        }
+    class ReadFile {
 
-        inline void swap_impl(ReadFile& s) {
-            swap(s.m_data, m_data);
-        }
-        
+        FileImpl* m_impl;
+
     public:
 
-        apk_unique_like(ReadFile, null_impl, close, swap_impl);
+        ReadFile();
+        ~ReadFile();
 
         bool open(const char*);
 
         bool close();
 
-        bool isOpen() const {
-            return m_data != nullptr;
-        }
+        bool isOpen() const;
 
-        int32 size() const;
+        uint32 size() const;
 
-        int32 pos() const;
+        bool seek(int32 where, int32 mode = kSEEK_SET);
 
-        int32 seek(int32 where, SeekMode mode = SeekMode::Set);
+        uint32 read(void* data, uint32 size);
 
-        int32 read(void* data, int32 size);
+        int16 readSint16BE();
+
+        int32 readSint32BE();
+
+        uint16 readUint16BE();
+
+        uint32 readUint32BE();
+
+        static bool exists(const char*);
 
     };
 
-    template<>
-    struct StreamData<ReadFile> {
-        ReadFile udata;
-        int32    src_endian;
-        int32    ref;
 
-        int32    read(void* dst, int32 size, int32 upper_bound);
-        int32    seek(int32 offset, SeekMode where, int32 lower_bound, int32 upper_bound);
-        bool     close();
+    class AppendFile {
+
+        FileImpl* m_impl;
+
+    public:
+
+        AppendFile();
+        ~AppendFile();
+
+        bool open(const char*);
+
+        bool close();
+
+        bool isOpen() const;
+
+        uint32 write(void* data, uint32 size);
+
     };
 
-    typedef StreamData<ReadFile> ReadFileStreamData;
 
-    typedef ReadStream<ReadFileStreamData> ReadFileStream;
-
-    ReadFileStream OpenReadFileStream(const char* path, int32 endian);
-
-
-    namespace fs {
-
-
-
-    }
 
 }

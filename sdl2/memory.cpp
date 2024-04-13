@@ -1,8 +1,8 @@
 // APK - Copyright (c) 2024 by Robin Southern. https://github.com/betajaen/apk
 // Licensed under the MIT License; see LICENSE file.
 
-#include "apk/apk.h"
 
+#include "apk/apk.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -40,15 +40,15 @@ namespace apk {
         header->size = totalSize;
         header->footer = (Footer*) (bytes + sizeof(Header) + size);
         header->footer->header = header;
-        ::printf("[MEM] Allocate %s (%u)\n", comment, size);
+        /// ::printf("[MEM] Allocate %s (%ld)\n", comment, totalSize);
         return (void*) (bytes + sizeof(Header));
     }
 
     static void _freeMem(void* mem, const char* comment) {
-        ::printf("[MEM] Free from %s (%p)\n", comment, mem);
+        // ::printf("[MEM] Free from %s (%p)\n", comment);
         assert(mem);
         Header* header = (((Header*) mem) - 1);
-        ::printf("[MEM] Free %s (%u)\n", header->comment, header->size);
+        // ::printf("[MEM] Free %s (%ld)\n", header->comment, header->size);
         assert(header->magic == kMagic);
         assert(header->footer->header == header);
         byte* b = (byte*) header;
@@ -69,11 +69,11 @@ namespace apk {
     }
 #endif
 
-    void* heap_allocate(APK_SIZE_TYPE size, const char* comment) {
+    void* _apk_allocate(APK_SIZE_TYPE size, const char* comment) {
         return _allocMem(size, comment);
     }
 
-    void heap_deallocate(void* mem, const char* comment) {
+    void _apk_deallocate(void* mem, const char* comment) {
         if (mem) {
             _freeMem(mem,  comment);
         }
@@ -95,47 +95,11 @@ namespace apk {
         ::memset(dst, val, length);
     }
 
-    const char* strchr(const char* str, char c) {
-        return ::strchr(str, c);
-    }
-
-    const char* strrchr(const char* str, char c) {
-        return ::strrchr(str, c);
-    }
-
-    char* strchr(char* str, char c) {
-        return ::strchr(str, c);
-    }
-
-    char* strrchr(char* str, char c) {
-        return ::strrchr(str, c);
-    }
-
-    int strcmp(const char* lhs, const char* rhs) {
-        return ::strcmp(lhs, rhs);
-    }
-
-    uint32 strlen(const char* str) {
-        return ::strlen(str);
-    }
-
-    void strcpy(char* dst, const char* src) {
-        ::strlcpy(dst, src, 0xFFFFFFFF);
-    }
-
-    void strlcpy(char* dst, const char* src, uint32 length) {
-        ::strlcpy(dst, src, length);
-    }
-
     void sprintf_s(char* dst, APK_SIZE_TYPE dst_length, const char* fmt, ...) {
         va_list args;
         va_start(args, fmt);
         ::vsnprintf(dst, dst_length, fmt, args);
         va_end(args);
-    }
-
-    char toupper(char c) {
-        return ::toupper(c);
     }
 
     bool string_startswith(const char* str, const char* prefix) {
@@ -158,5 +122,28 @@ namespace apk {
         }
 
         return strncmp(str + (strLen - suffixLen), suffix, suffixLen) == 0;
+    }
+
+
+    uint32 string_to_uint32(const char* str) {
+        if (str == NULL) {
+            return 0;
+        }
+
+        if ((str == NULL) || (str[0] == '\0') || (str[0] == '0' && str[1] == '\0')) {
+            return 0;
+        }
+
+        if (str[0] == '1' && str[1] == '\0') {
+            return 1;
+        }
+        
+        uint32 rv = 0;
+        while((*str != '\0') && (*str >= '0' && *str <= '9')) {
+            rv = rv * 10 + (*str - '0');
+            str++;
+        }
+
+        return rv;
     }
 }

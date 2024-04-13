@@ -18,7 +18,7 @@
 #include <intuition/intuition.h>
 #include <intuition/intuitionbase.h>
 
-namespace apk { namespace gfx {
+namespace apk { namespace video {
 
 		extern struct Screen* mScreen;
 		extern struct Window* mWindow;
@@ -77,16 +77,16 @@ namespace apk { namespace gfx {
             memset(sPalette, 0, sizeof(sPalette));
 
             sPalette[0] = 256L << 16 | 0;
-            sPalette[1] = 0xFFffffff;
-            sPalette[2] = 0xFFffffff;
-            sPalette[3] = 0xFFffffff;
+            sPalette[4] = 0xFFffffff;
+            sPalette[5] = 0xFFffffff;
+            sPalette[6] = 0xFFffffff;
 
             sPaletteDirty = TRUE;
         }
 
         void paletteFadeIn(uint32 steps) {
             if (sPaletteFading == 0) {
-                sPaletteFadeSteps = (int32) clip((int32)steps, (int32)1, (int32)255);
+                sPaletteFadeSteps = (int32) CLIP((int32)steps, (int32)1, (int32)255);
                 sPaletteFadeTime = -255;
                 sPaletteFadeDest = 0;
                 sPaletteFading = 1;
@@ -95,7 +95,7 @@ namespace apk { namespace gfx {
 
         void paletteFadeOut(uint32 steps) {
             if (sPaletteFading == 0) {
-                sPaletteFadeSteps = -(int32) clip((int32)steps, (int32)1, (int32)255);
+                sPaletteFadeSteps = -(int32) CLIP((int32)steps, (int32)1, (int32)255);
                 sPaletteFadeTime = 255;
                 sPaletteFadeDest = 0;
                 sPaletteFading = -1;

@@ -12,27 +12,27 @@ namespace apk {
     }
 
     template<typename T>
-    inline T min(const T& lhs, const T& rhs) {
+    inline T MIN(const T& lhs, const T& rhs) {
         return (lhs < rhs ? lhs : rhs);
     }
 
     template<typename T1, typename T2>
-    inline T1 min(const T1& lhs, const T2& rhs) {
+    inline T1 MIN(const T1& lhs, const T2& rhs) {
         return (lhs < rhs ? lhs : rhs);
     }
 
     template<typename T>
-    inline T abs(T v) {
+    inline T ABS(T v) {
         return v < 0 ? -v : v;
     }
 
     template<typename T>
-    inline T max(T lhs, T rhs) {
+    inline T MAX(T lhs, T rhs) {
         return (lhs > rhs) ? lhs : rhs;
     }
 
     template<typename T>
-    inline T clip(T x, T min, T max) {
+    inline T CLIP(T x, T min, T max) {
         if (x < min)
             x = min;
         else if (x > max)

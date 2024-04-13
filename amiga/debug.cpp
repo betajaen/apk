@@ -13,6 +13,12 @@ static const ULONG PutChar = 0x16c04e75;
 static const ULONG LenChar = 0x52934e75;
 static char BufChar[1024] = { 0 };
 
+namespace apk { namespace video {
+    void setDebugNum(uint32 num);
+    void setDebugStr(const char* str);
+    void clearDebug();
+}}
+
 namespace apk {
 
     void printf(const char* fmt, ...) {
@@ -61,5 +67,16 @@ namespace apk {
     }
 
 
+    void debug_num(uint32 num) {
+        apk::video::setDebugNum(num);
+    }
+
+    void debug_str(const char* str) {
+        apk::video::setDebugStr(str);
+    }
+
+    void debug_clear() {
+        apk::video::clearDebug();
+    }
 
 }

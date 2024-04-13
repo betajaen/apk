@@ -10,6 +10,8 @@ namespace apk {
     bool s_quitRequested = true;
 
     void gameMain();
+    void gameBeginPause();
+    void gameEndPause();
 }
 
 int apk_main() {
@@ -17,7 +19,7 @@ int apk_main() {
 
     apk::gameMain();
 
-    apk::gfx::destroyScreen();
+    apk::video::destroyScreen();
 }
 
 namespace apk {

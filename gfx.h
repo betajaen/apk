@@ -7,7 +7,7 @@ namespace apk {
 
     struct Event;
 
-    namespace gfx {
+    namespace video {
 
         typedef void(*WindowEventFn)(void* user, Event& evt);
         typedef void(*WindowTimerFn)(void* user);
@@ -33,7 +33,14 @@ namespace apk {
         void setCursor(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY);
         void setCursorChunky(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY);
         void paletteFadeIn(uint32 speed);
-        
+        void fillRect(uint32 l, uint32 t, uint32 w, uint32 h, uint8 col);
+        void copy(uint32 l, uint32 t, uint32 w, uint32 h);
+        void paste(uint32 l, uint32 t);
+        void pasteIcon(uint8* img, uint32 x, uint32 y, uint32 w, uint32 h, uint8 transparent, uint8* pal);
+        void forceUpdateScreen();
+        void setDebugNum(uint32 num);
+        void setDebugStr(const char* str);
+        void clearDebug();
 
     }
 
