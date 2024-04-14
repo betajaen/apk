@@ -342,7 +342,7 @@ namespace apk {
         SDL_assert(s_screen == NULL);
 
         s_screen = SDL_CreateWindow(title,
-            2048,
+            SDL_WINDOWPOS_CENTERED,
             SDL_WINDOWPOS_CENTERED,
             width * kScreenScale,
             height * kScreenScale,
