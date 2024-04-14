@@ -8,4 +8,5 @@ APK_OBJ := \
     apk/sdl2/bank.cpp \
     apk/sdl2/ext/tinyfiledialogs.cpp \
     apk/shared/new.cpp \
-    apk/shared/text.cpp
+    apk/shared/text.cpp \
+    apk/shared/chunky.cpp

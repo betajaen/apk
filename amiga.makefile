@@ -10,4 +10,5 @@ APK_OBJ := \
     apk/amiga/screen.cpp \
     apk/amiga/window.cpp \
     apk/shared/new.cpp \
-    apk/shared/text.cpp
+    apk/shared/text.cpp \
+    apk/shared/chunky.cpp
