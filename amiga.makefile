@@ -1,5 +1,4 @@
 APK_OBJ := \
-    apk/amiga/bank.cpp \
     apk/amiga/debug.cpp \
     apk/amiga/entry.cpp \
     apk/amiga/file.cpp \
@@ -11,4 +10,4 @@ APK_OBJ := \
     apk/amiga/window.cpp \
     apk/shared/new.cpp \
     apk/shared/text.cpp \
-    apk/shared/chunky.cpp
+    apk/shared/bitmap.cpp

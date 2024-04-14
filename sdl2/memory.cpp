@@ -78,6 +78,16 @@ namespace apk {
             _freeMem(mem,  comment);
         }
     }
+    
+    void* apk_allocate_chip(APK_SIZE_TYPE size) {
+        return _allocMem(size, "CHIP");
+    }
+
+    void apk_deallocate_chip(void* mem) {
+        if (mem) {
+            _freeMem(mem, "CHIP");
+        }
+    }
 
     void memcpy(void* dst, const void* src, APK_SIZE_TYPE length) {
         ::memcpy(dst, src, length);

@@ -1,7 +1,10 @@
 // APK - Copyright (c) 2024 by Robin Southern. https://github.com/betajaen/apk
 // Licensed under the MIT License; see LICENSE file.
 
-#include "apk/apk.h"
+#include <apk/apk.h>
+#include <apk/bitmap.h>
+#include <apk/sdl2/emulation.h>
+
 #include <SDL2/SDL.h>
 
 namespace apk {
@@ -16,7 +19,8 @@ namespace apk {
     SDL_Window* s_screen = NULL;
     constexpr int32 kScreenScale = 3;
     SDL_Surface* s_screenSurface = NULL;
-    byte* s_virtualSurface = NULL;
+    byte* s_Plane0 = NULL;
+    byte* s_Plane1 = NULL;
     SDL_Color s_virtualPalette[256] = { 0 };
     byte s_palette[256*3] = { 0 };
     byte s_fadePalette[256*3] = { 0 };
@@ -26,62 +30,17 @@ namespace apk {
     static int32 sPaletteFadeTime;
     static int32 sPaletteFadeDest;
     static bool  sPaletteDirty = false;
-    uint32 s_VirtualWidth = 0, s_VirtualHeight = 0, s_widthHeight = 0;
-    uint32 s_mouseX, s_mouseY;
-    uint8 s_SpriteImage[16*16] = { 0 };
-    int32 s_SpriteOffsetX = 0;
-    int32 s_SpriteOffsetY = 0;
-    uint32 s_SpriteWidth = 0;
-    uint32 s_SpriteHeight = 0;
+    uint32 s_PlaneWidth = 0, s_PlaneHeight = 0, s_PlaneWidthHeight = 0;
+    
     static char sDebugStr[41];
+
+    static int32 s_MouseX = 0, s_MouseY = 0;
+    static EmulatedSpriteHardware s_SpriteHardware;
+    static BitMapBank s_SpriteHardwareBank;
 
     void gameBeginPause();
     void gameEndPause();
-
-    static void blitVirtual(uint8* sprite, int32 spriteX, int32 spriteY, uint32 spriteWidth, uint32 spriteHeight, uint8 transparent) {
-        int32 x0 = MAX(0, spriteX);
-        int32 y0 = MAX(0, spriteY);
-        int32 x1 = MIN(x0 + spriteWidth, s_VirtualWidth);
-        int32 y1 = MIN(y0 + spriteHeight, s_VirtualHeight);
-
-		uint32 srcX0 = 0, srcY0 = 0;
-        for(int32 j=y0;j < y1;j++) {
-			uint32 dstIdx = (j * s_VirtualWidth);
-            uint32 srcIdx = (srcY0 * spriteWidth);
-            uint32 srcX0 = 0;
-			for(int32 i=x0;i < x1;i++) {
-				uint8 colour = sprite[srcIdx + srcX0];
-				if (colour != transparent) {
-					s_virtualSurface[dstIdx + i] = 17 + colour;
-				}
-                srcX0++;
-			}
-            srcY0++;
-		}
-
-    }
     
-    static void blitSprite(uint8* sprite, int32 spriteX, int32 spriteY, uint32 spriteWidth, uint32 spriteHeight) {
-        int32 x0 = MAX(0, spriteX);
-        int32 y0 = MAX(0, spriteY);
-        int32 x1 = MIN(x0 + spriteWidth, s_VirtualWidth);
-        int32 y1 = MIN(y0 + spriteHeight, s_VirtualHeight);
-
-		uint32 srcX0 = 0, srcY0 = 0;
-        for(int32 j=y0;j < y1;j++) {
-			uint32 dstIdx = (j * s_VirtualWidth);
-            uint32 srcIdx = (srcY0 * spriteWidth);
-            uint32 srcX0 = 0;
-			for(int32 i=x0;i < x1;i++) {
-				uint8 colour = sprite[srcIdx + srcX0];
-				s_virtualSurface[dstIdx + i] = colour;
-                srcX0++;
-			}
-            srcY0++;
-		}
-
-    }
-
     static uint32 SDL2_To_AmigaKey(SDL_Keycode kc) {
 
         switch(kc) {
@@ -351,18 +310,15 @@ namespace apk {
         SDL_assert(s_screen);
 
 
-        s_screenSurface =SDL_GetWindowSurface(s_screen);
+        s_screenSurface = SDL_GetWindowSurface(s_screen);
 
-        s_VirtualWidth = width;
-        s_VirtualHeight = height;
-        s_widthHeight = width * height;
+        s_PlaneWidth = width;
+        s_PlaneHeight = height;
+        s_PlaneWidthHeight = width * height;
 
-        s_virtualSurface = (byte*) apk_allocate(s_widthHeight);
+        s_Plane0 = (byte*) apk_allocate(s_PlaneWidthHeight);
+        s_Plane1 = (byte*) apk_allocate(s_PlaneWidthHeight);
         
-        memset(s_virtualSurface, 0, s_widthHeight);
-
-        memset(s_SpriteImage, 1, sizeof(s_SpriteImage));
-
         SDL_ShowCursor(SDL_DISABLE);
 
         return true;
@@ -372,43 +328,53 @@ namespace apk {
 
         SDL_ShowCursor(SDL_ENABLE);
 
-        if (s_virtualSurface != NULL) {
-            apk_deallocate(s_virtualSurface);
-            s_virtualSurface = NULL;
+        if (s_Plane0 != NULL) {
+            apk_deallocate(s_Plane0);
+            s_Plane0 = NULL;
+        }
+
+        if (s_Plane1 != NULL) {
+            apk_deallocate(s_Plane1);
+            s_Plane1 = NULL;
         }
 
         if(s_screen != NULL) {
             s_screen = NULL;
-            s_VirtualWidth = 0;
-            s_VirtualHeight = 0;
+            s_PlaneWidth = 0;
+            s_PlaneHeight = 0;
         }
     }
 
-    static void scaleCopy(SDL_Surface* dst, byte* src, uint32 scale, uint32 w, uint32 h) {
+    static void scaleCopy(SDL_Surface* dst, byte* plane0, byte* plane1, uint32 scale, uint32 w, uint32 h) {
 
         SDL_LockSurface(dst);
 
-        uint8* s = src;
+        uint8* s0 = plane0;
+        uint8* s1 = plane1;
         uint8* d = (uint8*)dst->pixels;
         const APK_SIZE_TYPE stride =  w * 4 * scale;
         uint8 line[stride];
 
         for(uint32 y=0;y < h;y++) {
 
-            uint8* l = s;
+            uint8* l0 = s0, *l1 = s1;
             uint8* t = line;
 
             for (uint32 x=0;x < w;x++) {
-                uint8 idx = *l;
-                SDL_Color col = s_virtualPalette[idx];
+                uint8 idx0 = *l0;
+                uint8 idx1 = *l1;
+                
+                SDL_Color col0 = s_virtualPalette[idx1 ? idx1 : idx0];
 
                 for (uint32 j=0;j < scale;j++) {
-                    *t++ = col.b;
-                    *t++ = col.g;
-                    *t++ = col.r;
+                    *t++ = col0.b;
+                    *t++ = col0.g;
+                    *t++ = col0.r;
                     *t++ = 0xFF;
                 }
-                l++;
+
+                l0++;
+                l1++;
             }
 
             for (uint32 j=0;j < scale;j++) {
@@ -416,17 +382,19 @@ namespace apk {
                 d += sizeof(line);
             }
 
-            s += w;
+            s0 += w;
+            s1 += w;
         }
 
         SDL_UnlockSurface(dst);
     }
 
-
     static void surfaceCopy() {
-        
-        blitVirtual(s_SpriteImage, s_mouseX + s_SpriteOffsetX, s_mouseY + s_SpriteOffsetY, s_SpriteWidth, s_SpriteHeight, 0);
-        scaleCopy(s_screenSurface, s_virtualSurface, kScreenScale, s_VirtualWidth, s_VirtualHeight);
+        memset_aligned(s_Plane1, 0, s_PlaneWidth * s_PlaneHeight);
+        s_SpriteHardware.blitChunky(s_Plane1, s_PlaneWidth, s_PlaneHeight, s_PlaneWidth);
+
+
+        scaleCopy(s_screenSurface, s_Plane0, s_Plane1, kScreenScale, s_PlaneWidth, s_PlaneHeight);
 
         SDL_UpdateWindowSurface(s_screen);
         if (s_FastMode) {
@@ -434,27 +402,31 @@ namespace apk {
         }
     }
 
+    static void mouseCopy() {
+
+    }
+
     void blit(uint8* data, uint32 size) {
 
-        assert(size <= s_widthHeight);
+        assert(size <= s_PlaneWidthHeight);
 
-        uint8* pixels = (uint8*)s_virtualSurface;
+        uint8* pixels = (uint8*)s_Plane0;
         memcpy(pixels, data, size);
     }
 
     void cls(uint8 index) {
-        memset(s_virtualSurface, index, s_widthHeight);
+        memset(s_Plane0, index, s_PlaneWidthHeight);
     }
 
     void fillRect(uint32 l, uint32 t, uint32 w, uint32 h, uint8 col) {
         uint32 x0 = MAX(0U, l);
         uint32 y0 = MAX(0U, t);
-        uint32 x1 = MIN(x0 + w, s_VirtualWidth);
-        uint32 y1 = MIN(y0 + h, s_VirtualHeight);
+        uint32 x1 = MIN(x0 + w, s_PlaneWidth);
+        uint32 y1 = MIN(y0 + h, s_PlaneHeight);
 
         for(uint32 j=y0;j < y1;j++) {
             for(uint32 i=x0;i < x1;i++) {
-                s_virtualSurface[i + j * s_VirtualWidth] = col;
+                s_Plane0[i + j * s_PlaneWidth] = col;
             }
         }
     }
@@ -462,18 +434,18 @@ namespace apk {
     void pasteIcon(uint8* img, uint32 x, uint32 y, uint32 w, uint32 h, uint8 transparent, uint8* pal) {
         uint32 x0 = MAX(0U, x);
         uint32 y0 = MAX(0U, y);
-        uint32 x1 = MIN(x0 + w, s_VirtualWidth);
-        uint32 y1 = MIN(y0 + h, s_VirtualHeight);
+        uint32 x1 = MIN(x0 + w, s_PlaneWidth);
+        uint32 y1 = MIN(y0 + h, s_PlaneHeight);
 
 		uint32 srcX0 = 0, srcY0 = 0;
         for(int32 j=y0;j < y1;j++) {
-			uint32 dstIdx = (j * s_VirtualWidth);
+			uint32 dstIdx = (j * s_PlaneWidth);
             uint32 srcIdx = (srcY0 * w);
             uint32 srcX0 = 0;
 			for(int32 i=x0;i < x1;i++) {
 				uint8 colour = img[srcIdx + srcX0];
                 if (colour != transparent) {
-				    s_virtualSurface[dstIdx + i] = pal[colour];
+				    s_Plane0[dstIdx + i] = pal[colour];
                 }
                 srcX0++;
 			}
@@ -503,7 +475,7 @@ namespace apk {
     }
     
     void writeChunkyPixels(uint8* data) {
-        blit(data, s_widthHeight);
+        blit(data, s_PlaneWidthHeight);
         surfaceCopy();
     }
 
@@ -643,6 +615,7 @@ namespace apk {
         bool isPaused = false;
 
         while(stopLoop == false) {
+            bool forceDraw = false;
             SDL_WaitEvent(&evt);
 
             if (isPaused) {
@@ -709,9 +682,11 @@ namespace apk {
                     {
                         mouseX = evt.button.x / kScreenScale;
                         mouseY = evt.button.y / kScreenScale;
-                        s_mouseX = mouseX;
-                        s_mouseY = mouseY;
+                        s_MouseX = mouseX;
+                        s_MouseY = mouseY;
                         reportedMouse = 0;
+                        s_SpriteHardware.getSprite(0)->setXY(mouseX, mouseY);
+                        forceDraw = true;
                     }
                     break;
                     case SDL_MOUSEBUTTONUP:
@@ -721,12 +696,14 @@ namespace apk {
                         e.type = EVENT_NONE;
                         mouseX = evt.button.x / kScreenScale;
                         mouseY = evt.button.y / kScreenScale;
-                        s_mouseX = mouseX;
-                        s_mouseY = mouseY;
+                        s_MouseX = mouseX;
+                        s_MouseY = mouseY;
                         reportedMouse = 1;
 
                         e.mouse.x = mouseX;
                         e.mouse.y = mouseY;
+                        s_SpriteHardware.getSprite(0)->setXY(mouseX, mouseY);
+                        forceDraw = true;
 
                         if (evt.button.button == SDL_BUTTON_LEFT) {
                             if (evt.type == SDL_MOUSEBUTTONUP) {
@@ -757,6 +734,11 @@ namespace apk {
                     break;
                 }
             }
+
+            if (forceDraw) {
+                surfaceCopy();
+            }
+
         }
         SDL_RemoveTimer(timer);
     }
@@ -784,31 +766,55 @@ namespace apk {
         s_TimerFns.pop_back();
     }
 
-    
-    void setCursor(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY) {
-        // TODO
+    void createSpriteBitMapFromChunky(uint32 id, uint16 w, uint16 h, uint8* data) {
+        BitMap* bitMap = s_SpriteHardwareBank.createBitMap(id, w, h, 0);
+        bitMap->copyFrom(data);
     }
 
-    void setCursorChunky(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY) {
-        s_SpriteWidth = MIN(16, width);
-        s_SpriteHeight = MIN(16, height);
-        s_SpriteOffsetX = offsetX;
-        s_SpriteOffsetY = offsetY;
-        uint32 copySize = width * height;
-        memcpy(s_SpriteImage, image, copySize);    
-    }
-
-    void setCursorFromBank(int32 bankNum, uint16 spriteNum) {
-        uint32 spriteSize;
-        uint16 width, height;
-        int16 offsetX, offsetY;
-        void* spriteData = (void*) bank::getSpriteBankData(bankNum, spriteNum, &spriteSize, &width, &height, &offsetX, &offsetY);
-
-        if (spriteData) {
-            setCursorChunky((uint8*) spriteData, spriteSize, width, height, offsetX, offsetY);
+    void setSpriteBanked(uint8 spriteNum, uint16 bitMapId) {
+        Bob* bob = s_SpriteHardware.getSprite(spriteNum);
+        if (bob) {
+            BitMap* bitMap = s_SpriteHardwareBank.findBitMap(bitMapId);
+            if (bitMap) {
+                bob->setBitMap(bitMap, false);
+            }
         }
     }
 
+    void setSpriteVisible(uint8 spriteNum, bool isVisible) {
+        s_SpriteHardware.setVisible(spriteNum, isVisible);
+    }
+
+    void setSpritePosition(uint8 spriteNum, int32 x, int32 y) {
+        Bob* bob = s_SpriteHardware.getSprite(spriteNum);
+        if (bob) {
+            bob->setXY(x, y);
+        }
+    }
+
+    void setSpriteOffset(uint8 spriteNum, int32 offsetX, int32 offsetY) {
+        Bob* bob = s_SpriteHardware.getSprite(spriteNum);
+        if (bob) {
+            bob->setCenterXY(offsetX, offsetY);
+        }
+    }
+
+    int32 getSpritePositionX(uint8 spriteNum) {
+        Bob* bob = s_SpriteHardware.getSprite(spriteNum);
+        if (bob) {
+            return bob->getX();
+        }
+        return 0;
+    }
+
+    int32 getSpritePositionY(uint8 spriteNum) {
+        Bob* bob = s_SpriteHardware.getSprite(spriteNum);
+        if (bob) {
+            return bob->getY();
+        }
+        return 0;
+    }
+    
 
 }}
 

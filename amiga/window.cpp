@@ -1,7 +1,8 @@
 // APK - Copyright (c) 2024 by Robin Southern. https://github.com/betajaen/apk
 // Licensed under the MIT License; see LICENSE file.
 
-#include "apk/apk.h"
+#include <apk/apk.h>
+#include <apk/bitmap.h>
 
 #include <proto/exec.h>
 #include <proto/dos.h>
@@ -30,7 +31,7 @@ struct Device* TimerBase;
 #include <clib/exec_protos.h>
 #include <clib/alib_protos.h>
 
-__chip UWORD s_Cursor[] = {
+__chip UWORD s_EmptySprite[] = {
     0x0000, 0x0000,
 
     0x0000, 0x0000,
@@ -70,6 +71,9 @@ namespace apk {
         static bool isPaletteFading = FALSE;
         static int32 paletteFadingDelta = 0;
         static int32 paletteFadingTime = 0;
+        static apk::BitMapBank s_HardwareSpriteBank;
+        static int32 s_HardwareSpriteOffsetX = 0, s_HardwareSpriteOffsetY = 0;
+        static uint16 s_HardwareSpriteBitMapId = 0;
 
         void paletteFunction();
 
@@ -198,7 +202,7 @@ namespace apk {
             }
 
 
-            SetPointer(mWindow, s_Cursor, 16, 16, -6, 0);
+            SetPointer(mWindow, s_EmptySprite, 1, 16, 0, 0);
 
 
             return true;
@@ -215,49 +219,46 @@ namespace apk {
             }
         }
 
-        void setCursorFromBank(int32 bankNum, uint16 spriteNum) {
-            uint32 spriteSize;
-            uint16 width, height;
-            int16 offsetX, offsetY;
-            UWORD* spriteData = (UWORD*) bank::getSpriteBankData(bankNum, spriteNum, &spriteSize, &width, &height, &offsetX, &offsetY);
-
-            if (spriteData) {
-                SetPointer(mWindow, spriteData, height, width, offsetX, offsetY);
-            }
-        }
-        
-        void setCursor(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY) {
-            CopyMem(image, s_Cursor + 2, size);
-            s_Cursor[2 + size] = 0;
-            s_Cursor[2 + size + 1] = 0;
-            SetPointer(mWindow, s_Cursor, height, width, offsetX, offsetY);
+        void createSpriteBitMapFromChunky(uint32 id, uint16 w, uint16 h, uint8* data) {
+            ::apk::BitMap* bitMap = s_HardwareSpriteBank.createBitMap(id, w, h, 2);
+            bitMap->copyFrom(data, BitMapFormat::AmigaSprite);
         }
 
-        void setCursorChunky(uint8* image, uint32 size, uint32 width, uint32 height, int32 offsetX, int32 offsetY) {
-            uint8 data[16 * 16];
-            uint32 planeOffset = (16 / 8) * 16;
-
-            uint32 dstIdx = 0;
-            uint8 bit = 0, bitIdx = 0;
-
-            for(uint16 j=0;j < height;j++) {
-                for(uint8 plane=0;plane < 2;plane++) {
-                    for(uint16 i=0;i < width;i++) {
-                        uint8 b = (image[i + (j * width)] >> plane) & 1;
-                        bit <<= 1;
-                        bit |= b;
-                        bitIdx++;
-                        if (bitIdx == 8) {
-                            data[dstIdx++] = bit;
-                            bit = 0;
-                            bitIdx = 0;
-                        }
-                    }
-                }
+        void setSpriteBanked(uint8 spriteNum, uint16 bitMapId) {
+            if (spriteNum == 0) {
+                s_HardwareSpriteBitMapId = bitMapId;
+                ::apk::BitMap* bitMap = s_HardwareSpriteBank.findBitMap(bitMapId);
+                SetPointer(mWindow, (UWORD*) bitMap->getData(), bitMap->getHeight(), bitMap->getWidth(), s_HardwareSpriteOffsetX, s_HardwareSpriteOffsetY);
             }
+        }
 
-            setCursor(data, dstIdx, 16,16, offsetX, offsetY);
+        void setSpriteVisible(uint8 spriteNum, bool isVisible) {
+            if (isVisible) {
+                ::apk::BitMap* bitMap = s_HardwareSpriteBank.findBitMap(s_HardwareSpriteBitMapId);
+                SetPointer(mWindow, (UWORD*) bitMap->getData(), bitMap->getHeight(), bitMap->getWidth(), s_HardwareSpriteOffsetX, s_HardwareSpriteOffsetY);
+            }
+            else {
+                SetPointer(mWindow, (UWORD*) s_EmptySprite, 1, 16, 0, 0);
+            }
+        }
 
+        void setSpritePosition(uint8 spriteNum, int32 x, int32 y) {
+            // N/A
+        }
+
+        void setSpriteOffset(uint8 spriteNum, int32 offsetX, int32 offsetY) {
+            if (spriteNum == 0) {
+                s_HardwareSpriteOffsetX = offsetX;
+                s_HardwareSpriteOffsetY = offsetY;
+            }
+        }
+
+        int32 getSpritePositionX(uint8 spriteNum) {
+            return 0;
+        }
+
+        int32 getSpritePositionY(uint8 spriteNum) {
+            return 0;
         }
 
         void windowStopLoop() {
@@ -370,12 +371,14 @@ namespace apk {
                             case IDCMP_MOUSEMOVE: {
                                 mouseX = msg->MouseX;
                                 mouseY = msg->MouseY;
+                                
                                 reportedMouse = 0;
                             }
                             break;
                             case IDCMP_MOUSEBUTTONS: {
                                 mouseX = msg->MouseX;
                                 mouseY = msg->MouseY;
+                                
                                 reportedMouse = 1;
 
                                 evt.mouse.x = mouseX;

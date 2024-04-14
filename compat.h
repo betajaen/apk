@@ -11,6 +11,8 @@
 namespace apk {
     void* _apk_allocate(APK_SIZE_TYPE size, const char* comment);
     void _apk_deallocate(void* mem, const char* comment);
+    void* apk_allocate_chip(APK_SIZE_TYPE size);
+    void apk_deallocate_chip(void* mem);
 
     template<typename T>
     inline void _apk_delete(T*& mem, const char* comment) {

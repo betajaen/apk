@@ -7,6 +7,8 @@ namespace apk {
 
     struct Event;
 
+    class BitMap;
+
     namespace video {
 
         typedef void(*WindowEventFn)(void* user, Event& evt);
@@ -41,6 +43,14 @@ namespace apk {
         void setDebugNum(uint32 num);
         void setDebugStr(const char* str);
         void clearDebug();
+
+        void createSpriteBitMapFromChunky(uint32 id, uint16 w, uint16 h, uint8* data);
+        void setSpriteBanked(uint8 spriteNum, uint16 bitMapId);
+        void setSpriteVisible(uint8 spriteNum, bool isVisible);
+        void setSpritePosition(uint8 spriteNum, int32 x, int32 y);
+        void setSpriteOffset(uint8 spriteNum, int32 offsetX, int32 offsetY);
+        int32 getSpritePositionX(uint8 spriteNum);
+        int32 getSpritePositionY(uint8 spriteNum);
 
     }
 

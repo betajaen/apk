@@ -22,6 +22,17 @@ namespace apk {
         }
     }
 
+    void* apk_allocate_chip(APK_SIZE_TYPE size) {
+        size += size & 3;
+        return AllocVec(size, MEMF_CHIP | MEMF_CLEAR);
+    }
+
+    void apk_deallocate_chip(void* mem) {
+        if (mem != NULL) {
+            FreeVec(mem);
+        }
+    }
+
     void memcpy(void* dst, const void* src, APK_SIZE_TYPE length) {
         CopyMem(src, dst, length);
     }
