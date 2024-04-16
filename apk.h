@@ -40,6 +40,8 @@ namespace apk {
 
     bool isQuitRequested();
 
+    void performQuit();
+
 
 
 }

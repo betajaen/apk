@@ -58,6 +58,7 @@ namespace apk {
 
     void gameBeginPause();
     void gameEndPause();
+    void gameQuitRequest();
 
     namespace bank {
         void* getSpriteBankData(int32 bankNum, uint16 spriteNum, uint32* outSize, uint16* outWidth, uint16* outHeight, int16* offsetX, int16* offsetY);
@@ -261,9 +262,6 @@ namespace apk {
             return 0;
         }
 
-        void windowStopLoop() {
-            mWindowLoopStop = TRUE;
-        }
 
         typedef void(*WindowEventFn)(void* user, Event& evt);
         typedef void(*WindowTimerFn)(void* user);
@@ -340,6 +338,11 @@ namespace apk {
                             break;
                             case IDCMP_VANILLAKEY: {
                                 if (msg->Code == 27) {
+                                    ReplyMsg((struct Message*)msg);
+                                    apk::gameQuitRequest();
+                                    continue;
+                                }
+                                else if (msg->Code == '0') {
                                     mWindowLoopStop = TRUE;
                                 }
                                 else if (msg->Code == ' ') {
@@ -465,6 +468,8 @@ namespace apk {
         return video::mWindowLoopStop;
     }
 
-    
+    void performQuit() {
+        video::mWindowLoopStop = TRUE;
+    }
 
 }
