@@ -19,6 +19,8 @@ namespace apk { namespace text {
 
     const char* string_first_of(const char* str, char needle);
 
+    int string_last_of_index(const char* str, char needle);
+
     char char_to_uppercase(char ch);
 
 }}

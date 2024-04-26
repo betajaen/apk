@@ -12,6 +12,11 @@ namespace apk { namespace fs {
     
     const char* getProgramDir();
 
+    typedef bool(*DirFn)(char* path, void* user);
+
+    void Dir(const char* path, const char* extension, DirFn cb, void* user);
+
+
 }}
 
 namespace apk { namespace path {
@@ -23,7 +28,7 @@ namespace apk { namespace path {
     };
 
     PathType test(const char* path);
-
+     
 }}
 
 namespace apk {

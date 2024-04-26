@@ -5,7 +5,11 @@
 #include <apk/file.h>
 #include <apk/text.h>
 
+#include <proto/exec.h>
 #include <proto/dos.h>
+#include <dos/dos.h>
+#include <dos/dosextens.h>
+#include <dos/exall.h>
 
 namespace apk { namespace fs {
     static char s_ProgDir[256] = "PROGDIR:";
@@ -32,7 +36,7 @@ namespace apk { namespace path {
 
             return rv;
         }
-        return rv;
+       return rv;
     }
 
 }}
@@ -52,6 +56,75 @@ namespace apk { namespace fs {
     const char* getProgramDir() {
         return s_ProgDir;
     }
+
+
+    void Dir(const char* path, const char* pattern, DirFn cb, void* user) {
+        // TEMP
+        UBYTE eac_pattern[256];
+
+        ParsePatternNoCase(pattern, eac_pattern, 256);
+
+        BPTR lock = Lock(path, SHARED_LOCK);
+
+        if (lock == 0UL) {
+            requester_okay("apk", "no lock");
+            return;
+        }
+
+        ExAllControl* control = (ExAllControl*) AllocDosObject(DOS_EXALLCONTROL, NULL);
+
+        if (control == NULL) {
+            requester_okay("apk", "null control");
+            return;
+        }
+
+        ExAllData* buffer = (ExAllData*) AllocMem(4096, MEMF_PUBLIC|MEMF_CLEAR);
+        ExAllData* ead = NULL;
+
+        LONG type = ED_COMMENT;
+        control->eac_LastKey = 0;
+        control->eac_MatchString = (STRPTR) &eac_pattern[0]; //
+
+        while(true) {
+                                        
+            BOOL more = ExAll(lock, buffer, 4096, type, control);
+            LONG res2 = IoErr();
+
+            if ((!more) && (IoErr() != ERROR_NO_MORE_ENTRIES)) {
+                break;
+            }
+
+
+            if (control->eac_Entries == 0) {
+                break;
+            }
+
+            ead = buffer;
+            while(ead) {
+                bool rv = cb(ead->ed_Name, user);
+                if (rv == true)
+                   break;
+                ead = ead->ed_Next;
+            }
+
+        }
+
+
+        FreeDosObject(DOS_EXALLCONTROL, control);
+        FreeMem(buffer, 4096);
+        UnLock(lock);
+        lock = 0UL;
+
+
+
+//        while(true) {
+//            bool rv = cb("test.save", user);
+//            if (rv == true)
+//                break;
+//        }
+    }
+
+
 
 }}
 

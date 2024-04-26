@@ -61,6 +61,16 @@ namespace apk { namespace text {
         return NULL;
     }
 
+    int string_last_of_index(const char* str, char c) {
+        int len = string_length(str);
+        while(len > -1) {
+            if (str[len] == c)
+                return len;
+            len--;
+        }
+        return -1;
+    }
+
     char char_to_uppercase(char ch) {
         if (ch >= 97 && ch <= 122) {
             return ch - 32;
